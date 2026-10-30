@@ -14,14 +14,23 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  RoleSelectMenuBuilder,
-  ChannelSelectMenuBuilder,
   AttachmentBuilder
 } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+
+// ==========================================
+// TRATAMENTO GLOBAL DE ERROS (EVITA QUEDAS NO RENDER)
+// ==========================================
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ [unhandledRejection] Erro assíncrono capturado:', reason);
+});
+
+process.on('uncaughtException', (error, origin) => {
+  console.error('💥 [uncaughtException] Exceção não tratada:', error, origin);
+});
 
 const client = new Client({
   intents: [
@@ -38,14 +47,23 @@ const SETS_FILE = path.join(__dirname, 'sets.json');
 const PREFIX = '?';
 
 function loadData(file, defaultVal = {}) {
-  if (!fs.existsSync(file)) {
-    fs.writeFileSync(file, JSON.stringify(defaultVal, null, 2));
+  try {
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(file, JSON.stringify(defaultVal, null, 2));
+    }
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    console.error(`Erro ao carregar o ficheiro ${file}:`, err);
+    return defaultVal;
   }
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
 function saveData(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error(`Erro ao guardar o ficheiro ${file}:`, err);
+  }
 }
 
 // ==========================================
@@ -171,13 +189,13 @@ const commands = [
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
-  console.log(`Bot online como ${client.user.tag}!`);
+  console.log(`🤖 Bot online como ${client.user.tag}!`);
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   try {
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-    console.log('Comandos registrados com sucesso!');
+    console.log('✅ Comandos Slash registrados com sucesso!');
   } catch (error) {
-    console.error(error);
+    console.error('❌ Erro ao registrar comandos Slash:', error);
   }
 });
 
@@ -235,7 +253,7 @@ function getUserSets(guildId, userId) {
 }
 
 // ==========================================
-// FUNÇÕES COMPARTILHADAS (ECONOMIA / TICKET / SETS)
+// FUNÇÕES DOS COMANDOS
 // ==========================================
 
 async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
@@ -313,7 +331,7 @@ async function handleSaldo(messageOrInteraction, targetUser, guildId) {
 async function handleSetCommand(messageOrInteraction, user, guildId) {
   let dbSets = loadData(SETS_FILE, {});
   const userSetData = getUserSets(guildId, user.id);
-  const cooldownTime = 10 * 60 * 1000; // 10 minutos
+  const cooldownTime = 10 * 60 * 1000; // 10 Minutos
   const now = Date.now();
 
   if (now - userSetData.cooldown < cooldownTime) {
@@ -324,7 +342,6 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
     return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg, ephemeral: true }) : await messageOrInteraction.channel.send(msg);
   }
 
-  // Sorteio de raridade baseada nas suas regras originais
   const randomChance = Math.floor(Math.random() * 100) + 1;
   let selectedRarity = 'Rara';
   if (randomChance >= 61 && randomChance < 86) selectedRarity = 'Épica';
@@ -365,23 +382,23 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
   const userSetData = (dbSets[guildId] && dbSets[guildId][targetUser.id]) ? dbSets[guildId][targetUser.id] : { inventory: {} };
   const userInventory = userSetData.inventory || {};
 
-  // Filtrar sets possuídos
   const userOwnedSets = SETS.filter(s => (userInventory[s.id] || 0) > 0);
   const filteredSets = activeCategory === 'Todas' 
     ? userOwnedSets 
     : userOwnedSets.filter(s => s.rarity === activeCategory);
 
-  // Gerar Canvas Estilo Azul
+  // Criar tela do Canvas
   const canvas = createCanvas(1000, 500);
   const ctx = canvas.getContext('2d');
 
+  // Gradiente de Fundo
   const gradient = ctx.createLinearGradient(0, 0, 1000, 500);
   gradient.addColorStop(0, '#0a192f');
   gradient.addColorStop(1, '#004080');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 1000, 500);
 
-  // Avatar do Usuário
+  // Avatar do Utilizador
   try {
     const avatarURL = targetUser.displayAvatarURL({ extension: 'png', size: 256 });
     const avatarImg = await loadImage(avatarURL);
@@ -399,7 +416,9 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     ctx.beginPath();
     ctx.arc(100, 100, 60, 0, Math.PI * 2, true);
     ctx.stroke();
-  } catch (err) {}
+  } catch (err) {
+    console.error('Erro ao renderizar avatar:', err);
+  }
 
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 32px sans-serif';
@@ -416,7 +435,7 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
   ctx.lineTo(960, 180);
   ctx.stroke();
 
-  // Grade de Miniaturas
+  // Grade de Miniaturas com Proteção contra Falhas de Imagens
   const startX = 50;
   const startY = 200;
   const boxSize = 80;
@@ -441,7 +460,11 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     try {
       const setImg = await loadImage(setItem.image);
       ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
-    } catch (e) {}
+    } catch (e) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '10px sans-serif';
+      ctx.fillText("Sem Img", x + 15, y + 45);
+    }
 
     const count = userInventory[setItem.id];
     ctx.fillStyle = '#2196F3';
@@ -665,7 +688,7 @@ async function handleLF(message, mode, guildCfg) {
 }
 
 // ==========================================
-// EVENTO DE MENSAGENS (COMANDOS DE PREFIXO)
+// EVENTO DE MENSAGENS (PREFIXO ?)
 // ==========================================
 
 client.on('messageCreate', async message => {
@@ -710,7 +733,7 @@ client.on('messageCreate', async message => {
 });
 
 // ==========================================
-// EVENTO DE INTERAÇÕES (SLASH COMMANDS & BOTÕES)
+// EVENTO DE INTERAÇÕES (SLASH COMMANDS E BOTÕES)
 // ==========================================
 
 client.on('interactionCreate', async interaction => {
@@ -888,7 +911,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- BOTÕES E INTERAÇÕES ---
   if (interaction.isButton()) {
     // Resgatar Set
     if (interaction.customId.startsWith('claim_set_')) {
@@ -1056,6 +1078,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+// Servidor Web HTTP para o Render manter o bot ativo
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot do Discord online e ativo!\n');
@@ -1063,7 +1086,7 @@ const server = http.createServer((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor web do bot rodando na porta ${PORT}`);
+  console.log(`🌐 Servidor HTTP ativo na porta ${PORT}`);
 });
 
 client.login(process.env.DISCORD_TOKEN);
