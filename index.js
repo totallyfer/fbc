@@ -98,6 +98,11 @@ const commands = [
         .addAttachmentOption(opt => opt.setName('fundo').setDescription('Envie a imagem de fundo (PNG/JPG)').setRequired(true))
     )
     .addSubcommand(sub => 
+      sub.setName('economia')
+        .setDescription('Gerencia as configurações de economia e o fundo da Leaderboard.')
+        .addAttachmentOption(opt => opt.setName('fundo_leaderboard').setDescription('Envie a imagem de fundo para a Leaderboard (Opcional)').setRequired(false))
+    )
+    .addSubcommand(sub => 
       sub.setName('ticket')
         .setDescription('Gerencia e configura o sistema de tickets.')
         .addStringOption(opt => opt.setName('titulo').setDescription('Título do painel de tickets').setRequired(false))
@@ -106,8 +111,7 @@ const commands = [
         .addAttachmentOption(opt => opt.setName('miniatura_arquivo').setDescription('Miniatura / Thumbnail do painel (anexo)').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo_staff').setDescription('Cargo de atendimento da staff').setRequired(false))
         .addChannelOption(opt => opt.setName('canal_envio').setDescription('Canal onde o painel será enviado').setRequired(false))
-    )
-    .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.')),
+    ),
 
   new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility cadastrado!'),
   new SlashCommandBuilder().setName('inventario').setDescription('Visualiza o inventário de sets.').addUserOption(opt => opt.setName('usuario').setDescription('Membro').setRequired(false)),
@@ -145,13 +149,14 @@ function getGuildConfig(guildId) {
         maxWork: 250
       },
       backgrounds: {
-        inventory: ''
+        inventory: '',
+        leaderboard: ''
       }
     };
     saveData(CONFIG_FILE, db);
   }
   if (!db[guildId].backgrounds) {
-    db[guildId].backgrounds = { inventory: '' };
+    db[guildId].backgrounds = { inventory: '', leaderboard: '' };
   }
   return db[guildId];
 }
@@ -264,6 +269,7 @@ async function handleSaldo(messageOrInteraction, targetUser, guildId) {
 
 async function handleLeaderboard(messageOrInteraction, guild) {
   let dbEco = loadData(ECONOMY_FILE, {});
+  const guildCfg = getGuildConfig(guild.id);
   const guildEconomy = dbEco[guild.id] || {};
   const sortedUsers = Object.entries(guildEconomy)
     .map(([userId, data]) => ({ userId, total: data.wallet + data.bank, wallet: data.wallet, bank: data.bank }))
@@ -278,8 +284,20 @@ async function handleLeaderboard(messageOrInteraction, guild) {
     const canvas = createCanvas(900, 850);
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#111214';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Verifica e aplica o fundo customizado da Leaderboard se existir
+    let bgLoaded = false;
+    if (guildCfg.backgrounds && guildCfg.backgrounds.leaderboard && fs.existsSync(guildCfg.backgrounds.leaderboard)) {
+      try {
+        const bgImg = await loadImage(guildCfg.backgrounds.leaderboard);
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        bgLoaded = true;
+      } catch (e) {}
+    }
+
+    if (!bgLoaded) {
+      ctx.fillStyle = '#111214';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
     ctx.fillRect(0, 0, canvas.width, 120);
@@ -716,6 +734,43 @@ client.on('interactionCreate', async interaction => {
         }
       }
 
+      if (sub === 'economia') {
+        const fundoLeaderboard = interaction.options.getAttachment('fundo_leaderboard');
+        const uploadsDir = path.join(__dirname, 'uploads_bg');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        let msgContent = '⚙️ O sistema de economia está ativo e configurado com ganhos por `?work` ou `/work`.';
+
+        if (fundoLeaderboard) {
+          try {
+            const resBg = await fetch(fundoLeaderboard.url);
+            const bufBg = Buffer.from(await resBg.arrayBuffer());
+            const bgPath = path.join(uploadsDir, `${guildId}-lb-bg.png`);
+            fs.writeFileSync(bgPath, bufBg);
+
+            guildCfg.backgrounds.leaderboard = bgPath;
+            let dbConfig = loadData(CONFIG_FILE, {});
+            dbConfig[guildId] = guildCfg;
+            saveData(CONFIG_FILE, dbConfig);
+
+            msgContent += '\n\n✅ **Imagem de fundo da Leaderboard atualizada com sucesso!**';
+          } catch (e) {
+            msgContent += '\n\n❌ Erro ao salvar a imagem de fundo da Leaderboard.';
+          }
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor('#00FFCC')
+          .setTitle('⚙️ Painel de Controle - Economia')
+          .setDescription(msgContent);
+
+        if (fundoLeaderboard) {
+          embed.setImage(fundoLeaderboard.url);
+        }
+
+        return await interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
       if (sub === 'ticket') {
         const titulo = interaction.options.getString('titulo');
         const descricao = interaction.options.getString('descricao');
@@ -771,14 +826,6 @@ client.on('interactionCreate', async interaction => {
         );
 
         return await interaction.reply({ embeds: [embedCfg], components: [rowLaunch], ephemeral: true });
-      }
-
-      if (sub === 'economia') {
-        const embed = new EmbedBuilder()
-          .setColor('#00FFCC')
-          .setTitle('⚙️ Painel de Controle - Economia')
-          .setDescription('O sistema de economia está ativo e configurado com ganhos por `?work` ou `/work`.');
-        return await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     }
 
