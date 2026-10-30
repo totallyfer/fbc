@@ -21,6 +21,7 @@ const {
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 const client = new Client({
   intents: [
@@ -49,7 +50,7 @@ function saveData(file, data) {
 const commands = [
   new SlashCommandBuilder()
     .setName('config')
-    .setDescription('Painel de configuração do servidor.')
+    .setDescription('Painel geral de configuração do servidor.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.Administrator)
     .addSubcommand(sub => sub.setName('ticket').setDescription('Gerencia o sistema de tickets do servidor.'))
     .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.')),
@@ -85,7 +86,6 @@ client.once('ready', async () => {
   }
 });
 
-// Inicializa configurações padrão para um servidor específico
 function getGuildConfig(guildId) {
   let db = loadData(CONFIG_FILE, {});
   if (!db[guildId]) {
@@ -93,6 +93,9 @@ function getGuildConfig(guildId) {
       ticket: {
         title: '🎫 Central de Atendimento & Suporte',
         description: 'Selecione abaixo o motivo do seu contato para abrir um ticket.',
+        color: '#5865F2',
+        thumbnail: '',
+        image: '',
         staffRoleId: null,
         targetChannelId: null
       },
@@ -120,36 +123,39 @@ client.on('interactionCreate', async interaction => {
   let dbEco = loadData(ECONOMY_FILE, {});
   let guildCfg = getGuildConfig(guildId);
 
-  // --- INTERAÇÕES DE COMANDOS SLASH ---
   if (interaction.isChatInputCommand()) {
     const { commandName } = interaction;
 
     if (commandName === 'config') {
       const sub = interaction.options.getSubcommand();
 
-      // PAINEL DE CONFIGURAÇÃO DE TICKET
       if (sub === 'ticket') {
         const cfg = guildCfg.ticket;
         const embed = new EmbedBuilder()
           .setColor('#5865F2')
           .setTitle('⚙️ Painel de Controle - Tickets')
-          .setDescription('Gerencie as configurações de atendimento deste servidor:')
+          .setDescription('Personalize o visual do painel e configure o sistema abaixo:')
           .addFields(
             { name: '📌 Cargo Staff', value: cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '❌ Não definido', inline: true },
             { name: '📢 Canal do Painel', value: cfg.targetChannelId ? `<#${cfg.targetChannelId}>` : '❌ Não definido', inline: true },
+            { name: '🎨 Cor do Embed', value: `\`${cfg.color}\``, inline: true },
             { name: '📝 Título Atual', value: `\`${cfg.title}\``, inline: false }
           );
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('cfg_ticket_embed').setLabel('Editar Embed').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
-          new ButtonBuilder().setCustomId('cfg_ticket_cargo').setLabel('Cargo Staff').setStyle(ButtonStyle.Secondary).setEmoji('🛡️'),
+        const row1 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('cfg_ticket_embed').setLabel('Editar Texto & Cores').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
+          new ButtonBuilder().setCustomId('cfg_ticket_images').setLabel('Miniatura & Imagem').setStyle(ButtonStyle.Primary).setEmoji('🖼️'),
+          new ButtonBuilder().setCustomId('cfg_ticket_cargo').setLabel('Cargo Staff').setStyle(ButtonStyle.Secondary).setEmoji('🛡️')
+        );
+
+        const row2 = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('cfg_ticket_canal').setLabel('Canal de Envio').setStyle(ButtonStyle.Secondary).setEmoji('📺'),
           new ButtonBuilder().setCustomId('cfg_ticket_enviar').setLabel('Lançar Painel').setStyle(ButtonStyle.Success).setEmoji('🚀')
         );
-        return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+
+        return await interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: true });
       }
 
-      // PAINEL DE CONFIGURAÇÃO DE ECONOMIA
       if (sub === 'economia') {
         const cfg = guildCfg.economy;
         const embed = new EmbedBuilder()
@@ -186,7 +192,7 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'trabalhar') {
       const eco = getUserEco(dbEco, guildId, interaction.user.id);
-      const cooldown = 30000; // 30 segundos
+      const cooldown = 30000;
       if (Date.now() - eco.lastWork < cooldown) {
         const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
         return await interaction.reply({ content: `⏳ Você está cansado! Trabalhe novamente em **${timeLeft} segundos**.` });
@@ -318,13 +324,21 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- INTERAÇÕES DE BOTÕES E MODAIS DE CONFIGURAÇÃO ---
   if (interaction.isButton()) {
     if (interaction.customId === 'cfg_ticket_embed') {
-      const modal = new ModalBuilder().setCustomId('modal_ticket_embed').setTitle('Personalizar Embed do Ticket');
+      const modal = new ModalBuilder().setCustomId('modal_ticket_embed').setTitle('Editar Texto & Cor');
       const titleInput = new TextInputBuilder().setCustomId('embed_title').setLabel('Título').setStyle(TextInputStyle.Short).setValue(guildCfg.ticket.title).setRequired(true);
       const descInput = new TextInputBuilder().setCustomId('embed_desc').setLabel('Descrição').setStyle(TextInputStyle.Paragraph).setValue(guildCfg.ticket.description).setRequired(true);
-      modal.addComponents(new ActionRowBuilder().addComponents(titleInput), new ActionRowBuilder().addComponents(descInput));
+      const colorInput = new TextInputBuilder().setCustomId('embed_color').setLabel('Cor (Hex ex: #5865F2)').setStyle(TextInputStyle.Short).setValue(guildCfg.ticket.color).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(titleInput), new ActionRowBuilder().addComponents(descInput), new ActionRowBuilder().addComponents(colorInput));
+      return await interaction.showModal(modal);
+    }
+
+    if (interaction.customId === 'cfg_ticket_images') {
+      const modal = new ModalBuilder().setCustomId('modal_ticket_images').setTitle('Miniatura & Imagem');
+      const thumbInput = new TextInputBuilder().setCustomId('embed_thumb').setLabel('URL da Miniatura (Thumbnail)').setStyle(TextInputStyle.Short).setValue(guildCfg.ticket.thumbnail || '').setRequired(false);
+      const imageInput = new TextInputBuilder().setCustomId('embed_image').setLabel('URL da Imagem Principal').setStyle(TextInputStyle.Short).setValue(guildCfg.ticket.image || '').setRequired(false);
+      modal.addComponents(new ActionRowBuilder().addComponents(thumbInput), new ActionRowBuilder().addComponents(imageInput));
       return await interaction.showModal(modal);
     }
 
@@ -345,16 +359,19 @@ client.on('interactionCreate', async interaction => {
       if (!targetChannel) return await interaction.reply({ content: '❌ Canal não encontrado.', ephemeral: true });
 
       const ticketEmbed = new EmbedBuilder()
-        .setColor('#5865F2')
+        .setColor(cfg.color || '#5865F2')
         .setTitle(cfg.title)
         .setDescription(cfg.description)
         .addFields({ name: '🎮 Jogos & Categorias', value: '• Flee The Facility\n• Murder Mystery 2\n• Piggy\n• Suporte Geral' })
         .setTimestamp()
         .setFooter({ text: 'Sistema de Tickets', iconURL: interaction.guild.iconURL() });
 
+      if (cfg.thumbnail) ticketEmbed.setThumbnail(cfg.thumbnail);
+      if (cfg.image) ticketEmbed.setImage(cfg.image);
+
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('ticket_select_menu')
-        .setPlaceholder('Escolha o assunto...')
+        .setPlaceholder('Abrir ticket')
         .addOptions([
           { label: 'Flee The Facility', value: 'ticket_ftf', emoji: '🏃‍♂️' },
           { label: 'Murder Mystery 2', value: 'ticket_mm2', emoji: '🔪' },
@@ -387,14 +404,22 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- SALVAR MODAIS ---
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'modal_ticket_embed') {
       guildCfg.ticket.title = interaction.fields.getTextInputValue('embed_title');
       guildCfg.ticket.description = interaction.fields.getTextInputValue('embed_desc');
+      guildCfg.ticket.color = interaction.fields.getTextInputValue('embed_color');
       dbConfig[guildId] = guildCfg;
       saveData(CONFIG_FILE, dbConfig);
-      return await interaction.reply({ content: '✅ Embed do ticket atualizada com sucesso!', ephemeral: true });
+      return await interaction.reply({ content: '✅ Título, descrição e cor atualizados com sucesso!', ephemeral: true });
+    }
+
+    if (interaction.customId === 'modal_ticket_images') {
+      guildCfg.ticket.thumbnail = interaction.fields.getTextInputValue('embed_thumb');
+      guildCfg.ticket.image = interaction.fields.getTextInputValue('embed_image');
+      dbConfig[guildId] = guildCfg;
+      saveData(CONFIG_FILE, dbConfig);
+      return await interaction.reply({ content: '✅ Miniatura e imagem atualizadas com sucesso!', ephemeral: true });
     }
 
     if (interaction.customId === 'modal_eco_values') {
@@ -411,7 +436,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- SALVAR MENUS DE CONFIGURAÇÃO ---
   if (interaction.isRoleSelectMenu() && interaction.customId === 'select_role_staff') {
     guildCfg.ticket.staffRoleId = interaction.values[0];
     dbConfig[guildId] = guildCfg;
@@ -426,7 +450,6 @@ client.on('interactionCreate', async interaction => {
     return await interaction.update({ content: `✅ Canal de envio definido para <#${guildCfg.ticket.targetChannelId}>!`, components: [] });
   }
 
-  // --- CRIAÇÃO DO TICKET PELO USUÁRIO ---
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
     const selectedValue = interaction.values[0];
     let categoryName = 'geral';
@@ -454,7 +477,7 @@ client.on('interactionCreate', async interaction => {
       });
 
       const ticketEmbed = new EmbedBuilder()
-        .setColor('#00FFCC')
+        .setColor(cfg.color || '#00FFCC')
         .setTitle(`Ticket de ${member.user.username}`)
         .setDescription(`Categoria: **${categoryName.toUpperCase()}**\n\nDescreva sua dúvida ou problema detalhadamente.`)
         .setTimestamp();
@@ -480,12 +503,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-
-
-
-// Servidor HTTP básico para o Render detetar a porta no plano gratuito
-const http = require('http');
+// Servidor HTTP básico para manter o Web Service gratuito ativo no Render sem timeout
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot do Discord online e ativo!\n');
@@ -495,3 +513,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Servidor web do bot rodando na porta ${PORT}`);
 });
+
+client.login(process.env.DISCORD_TOKEN);
