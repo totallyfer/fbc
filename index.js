@@ -115,10 +115,19 @@ const commands = [
     .addSubcommand(sub =>
       sub.setName('portao')
         .setDescription('Configura o sistema de entrada e saída (Portão).')
+        .addStringOption(opt => 
+          opt.setName('tipo')
+            .setDescription('Deseja configurar a Entrada ou a Saída?')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Entrada (Welcome)', value: 'entrada' },
+              { name: 'Saída (Leave)', value: 'saida' }
+            )
+        )
         .addChannelOption(opt => opt.setName('canal').setDescription('Canal de portão para os avisos').setRequired(false))
         .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed (use {user} para o nome)').setRequired(false))
         .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed (use {user} para marcar)').setRequired(false))
-        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Imagem grande da embed (anexo)').setRequired(false))
+        .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
         .addAttachmentOption(opt => opt.setName('miniatura').setDescription('Miniatura / Thumbnail da embed (anexo)').setRequired(false))
     ),
 
@@ -162,11 +171,20 @@ function getGuildConfig(guildId) {
         leaderboard: ''
       },
       portao: {
-        channelId: null,
-        title: '👋 Novo Membro Chegou!',
-        description: 'Seja bem-vindo(a) ao servidor, {user}!',
-        image: '',
-        thumbnail: ''
+        entrada: {
+          channelId: null,
+          title: '👋 Novo Membro Chegou!',
+          description: 'Seja bem-vindo(a) ao servidor, {user}!',
+          color: '#57F287',
+          thumbnail: ''
+        },
+        saida: {
+          channelId: null,
+          title: '🚪 Membro Saiu',
+          description: '**{user}** saiu do servidor. Esperamos que volte logo!',
+          color: '#ED4245',
+          thumbnail: ''
+        }
       }
     };
     saveData(CONFIG_FILE, db);
@@ -176,11 +194,8 @@ function getGuildConfig(guildId) {
   }
   if (!db[guildId].portao) {
     db[guildId].portao = {
-      channelId: null,
-      title: '👋 Novo Membro Chegou!',
-      description: 'Seja bem-vindo(a) ao servidor, {user}!',
-      image: '',
-      thumbnail: ''
+      entrada: { channelId: null, title: '👋 Novo Membro Chegou!', description: 'Seja bem-vindo(a) ao servidor, {user}!', color: '#57F287', thumbnail: '' },
+      saida: { channelId: null, title: '🚪 Membro Saiu', description: '**{user}** saiu do servidor.', color: '#ED4245', thumbnail: '' }
     };
   }
   return db[guildId];
@@ -641,12 +656,85 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
+// GERAÇÃO DE IMAGEM ESTILO CANVA (WELCOME)
+// ==========================================
+async function generateWelcomeImage(member) {
+  const canvas = createCanvas(1000, 400);
+  const ctx = canvas.getContext('2d');
+
+  // Fundo moderno com gradiente estilo Canva
+  const gradient = ctx.createLinearGradient(0, 0, 1000, 400);
+  gradient.addColorStop(0, '#1a1c29');
+  gradient.addColorStop(0.5, '#2b1055');
+  gradient.addColorStop(1, '#7597de');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Detalhes decorativos nas bordas
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.beginPath();
+  ctx.arc(900, 50, 200, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Avatar circular com borda brilhante
+  try {
+    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
+    const avatarImg = await loadImage(avatarURL);
+    
+    const centerX = 200;
+    const centerY = 200;
+    const radius = 90;
+
+    // Sombra do avatar
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 20;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
+    ctx.restore();
+
+    // Reset da sombra
+    ctx.shadowBlur = 0;
+
+    // Borda do avatar
+    ctx.strokeStyle = '#57F287';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
+    ctx.stroke();
+  } catch (e) {
+    console.error('Erro ao carregar avatar no Canva:', e);
+  }
+
+  // Textos estilizados
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 45px sans-serif';
+  ctx.fillText('BEM-VINDO(A)!', 350, 150);
+
+  ctx.fillStyle = '#57F287';
+  ctx.font = 'bold 32px sans-serif';
+  let username = member.user.username;
+  if (username.length > 18) username = username.substring(0, 16) + '...';
+  ctx.fillText(username, 350, 205);
+
+  ctx.fillStyle = '#b5bac1';
+  ctx.font = '22px sans-serif';
+  ctx.fillText(`ID do Servidor: ${member.guild.name}`, 350, 260);
+
+  return new AttachmentBuilder(await canvas.encode('png'), { name: 'welcome-banner.png' });
+}
+
+// ==========================================
 // EVENTOS DE ENTRADA E SAÍDA (PORTÃO)
 // ==========================================
 client.on('guildMemberAdd', async member => {
   const guildId = member.guild.id;
   const guildCfg = getGuildConfig(guildId);
-  const portao = guildCfg.portao;
+  const portao = guildCfg.portao.entrada;
 
   if (!portao || !portao.channelId) return;
   const channel = member.guild.channels.cache.get(portao.channelId);
@@ -659,16 +747,22 @@ client.on('guildMemberAdd', async member => {
   const formattedDesc = rawDesc.replace(/{user}/g, `${member}`);
 
   const embed = new EmbedBuilder()
-    .setColor('#57F287')
+    .setColor(portao.color || '#57F287')
     .setTitle(formattedTitle)
     .setDescription(formattedDesc)
     .setTimestamp();
 
   let filesArray = [];
-  if (portao.image && fs.existsSync(portao.image)) {
-    filesArray.push(new AttachmentBuilder(portao.image, { name: 'portao-img.png' }));
-    embed.setImage('attachment://portao-img.png');
+  
+  // Gera a imagem no Canva com o avatar do membro e envia
+  try {
+    const bannerAttachment = await generateWelcomeImage(member);
+    filesArray.push(bannerAttachment);
+    embed.setImage('attachment://welcome-banner.png');
+  } catch (err) {
+    console.error('Erro ao gerar imagem de boas-vindas:', err);
   }
+
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
     embed.setThumbnail('attachment://portao-thumb.png');
@@ -684,26 +778,25 @@ client.on('guildMemberAdd', async member => {
 client.on('guildMemberRemove', async member => {
   const guildId = member.guild.id;
   const guildCfg = getGuildConfig(guildId);
-  const portao = guildCfg.portao;
+  const portao = guildCfg.portao.saida;
 
   if (!portao || !portao.channelId) return;
   const channel = member.guild.channels.cache.get(portao.channelId);
   if (!channel) return;
 
-  const leaveTitle = '🚪 Membro Saiu';
-  const leaveDesc = `**${member.user.username}** saiu do servidor. Esperamos que volte logo!`;
+  const rawTitle = portao.title || '🚪 Membro Saiu';
+  const rawDesc = portao.description || '**{user}** saiu do servidor. Esperamos que volte logo!';
+
+  const formattedTitle = rawTitle.replace(/{user}/g, member.user.username);
+  const formattedDesc = rawDesc.replace(/{user}/g, `${member.user.username}`);
 
   const embed = new EmbedBuilder()
-    .setColor('#ED4245')
-    .setTitle(leaveTitle)
-    .setDescription(leaveDesc)
+    .setColor(portao.color || '#ED4245')
+    .setTitle(formattedTitle)
+    .setDescription(formattedDesc)
     .setTimestamp();
 
   let filesArray = [];
-  if (portao.image && fs.existsSync(portao.image)) {
-    filesArray.push(new AttachmentBuilder(portao.image, { name: 'portao-img.png' }));
-    embed.setImage('attachment://portao-img.png');
-  }
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
     embed.setThumbnail('attachment://portao-thumb.png');
@@ -872,36 +965,30 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (sub === 'portao') {
+        const tipo = interaction.options.getString('tipo'); // 'entrada' ou 'saida'
         const canal = interaction.options.getChannel('canal');
         const tituloOpt = interaction.options.getString('titulo');
         const descOpt = interaction.options.getString('descricao');
-        const imagemArquivo = interaction.options.getAttachment('imagem');
+        const corOpt = interaction.options.getString('cor');
         const miniaturaArquivo = interaction.options.getAttachment('miniatura');
 
-        if (canal) guildCfg.portao.channelId = canal.id;
-        if (tituloOpt) guildCfg.portao.title = tituloOpt;
-        if (descOpt) guildCfg.portao.description = descOpt;
+        let targetCfg = guildCfg.portao[tipo];
+
+        if (canal) targetCfg.channelId = canal.id;
+        if (tituloOpt) targetCfg.title = tituloOpt;
+        if (descOpt) targetCfg.description = descOpt;
+        if (corOpt) targetCfg.color = corOpt;
 
         const uploadsDir = path.join(__dirname, 'uploads_portao');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-
-        if (imagemArquivo) {
-          try {
-            const resImg = await fetch(imagemArquivo.url);
-            const bufImg = Buffer.from(await resImg.arrayBuffer());
-            const imgPath = path.join(uploadsDir, `${guildId}-portao-img.png`);
-            fs.writeFileSync(imgPath, bufImg);
-            guildCfg.portao.image = imgPath;
-          } catch (e) {}
-        }
 
         if (miniaturaArquivo) {
           try {
             const resThumb = await fetch(miniaturaArquivo.url);
             const bufThumb = Buffer.from(await resThumb.arrayBuffer());
-            const thumbPath = path.join(uploadsDir, `${guildId}-portao-thumb.png`);
+            const thumbPath = path.join(uploadsDir, `${guildId}-portao-${tipo}-thumb.png`);
             fs.writeFileSync(thumbPath, bufThumb);
-            guildCfg.portao.thumbnail = thumbPath;
+            targetCfg.thumbnail = thumbPath;
           } catch (e) {}
         }
 
@@ -910,17 +997,17 @@ client.on('interactionCreate', async interaction => {
         saveData(CONFIG_FILE, dbConfig);
 
         const embedCfg = new EmbedBuilder()
-          .setColor('#5865F2')
-          .setTitle('✅ Configuração do Portão Atualizada!')
+          .setColor(targetCfg.color || '#5865F2')
+          .setTitle(`✅ Configuração de Portão (${tipo.toUpperCase()}) Atualizada!`)
           .addFields(
-            { name: '📢 Canal', value: guildCfg.portao.channelId ? `<#${guildCfg.portao.channelId}>` : '❌ Não definido', inline: true },
-            { name: '📌 Título', value: `\`${guildCfg.portao.title}\``, inline: false },
-            { name: '📝 Descrição', value: `\`${guildCfg.portao.description}\``, inline: false }
+            { name: '📢 Canal', value: targetCfg.channelId ? `<#${targetCfg.channelId}>` : '❌ Não definido', inline: true },
+            { name: '🎨 Cor', value: `\`${targetCfg.color}\``, inline: true },
+            { name: '📌 Título', value: `\`${targetCfg.title}\``, inline: false },
+            { name: '📝 Descrição', value: `\`${targetCfg.description}\``, inline: false }
           );
 
-        if (guildCfg.portao.image && fs.existsSync(guildCfg.portao.image)) {
-          // Apenas para visualização no retorno
-          embedCfg.setImage(imagemArquivo ? imagemArquivo.url : null);
+        if (targetCfg.thumbnail && fs.existsSync(targetCfg.thumbnail)) {
+          embedCfg.setThumbnail(miniaturaArquivo ? miniaturaArquivo.url : null);
         }
 
         return await interaction.reply({ embeds: [embedCfg], ephemeral: true });
