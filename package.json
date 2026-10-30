@@ -1,25 +1,12 @@
 {
-  "name": "bot-discord-avancado",
+  "name": "bot-discord",
   "version": "1.0.0",
-  "description": "Bot de Discord com Tickets customizáveis e Economia com Leaderboard em Imagem",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [
-    "discord",
-    "bot",
-    "ticket",
-    "economy",
-    "canvas"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@napi-rs/canvas": "^0.1.5",
     "discord.js": "^14.14.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
