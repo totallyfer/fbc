@@ -68,9 +68,11 @@ const commands = [
         )
         .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed').setRequired(false))
         .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed').setRequired(false))
-        .addStringOption(opt => opt.setName('imagem').setDescription('URL da imagem da embed').setRequired(false))
-        .addRoleOption(opt => opt.setName('cargo1').setDescription('Primeiro cargo a ser mencionado').setRequired(false))
-        .addRoleOption(opt => opt.setName('cargo2').setDescription('Segundo cargo a ser mencionado').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('imagem_arquivo').setDescription('Envie uma imagem do seu dispositivo').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo1').setDescription('1º cargo a ser mencionado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo2').setDescription('2º cargo a ser mencionado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo3').setDescription('3º cargo a ser mencionado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo4').setDescription('4º cargo a ser mencionado').setRequired(false))
     ),
 
   new SlashCommandBuilder()
@@ -357,16 +359,27 @@ async function handleLF(message, mode, guildCfg) {
   if (!guildCfg.comp || !guildCfg.comp[mode]) return;
 
   const compCfg = guildCfg.comp[mode];
+  
+  // Adiciona a menção do autor automaticamente no final da descrição configurada
+  const baseDesc = compCfg.description || 'Procurando membros para jogar!';
+  const finalDesc = `${baseDesc}\n\n👤 **Autor:** ${message.author}`;
 
   const embed = new EmbedBuilder()
     .setColor(mode === 'legit' ? '#00FFCC' : '#FF0055')
     .setTitle(compCfg.title || `Procurando Jogadores (LF ${mode.toUpperCase()})`)
-    .setDescription(compCfg.description || 'Procurando membros para jogar!')
+    .setDescription(finalDesc)
     .setFooter({ text: `Enviado por ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
     .setTimestamp();
 
+  let filesArray = [];
   if (compCfg.image) {
-    embed.setImage(compCfg.image);
+    if (compCfg.image.startsWith('http')) {
+      embed.setImage(compCfg.image);
+    } else if (fs.existsSync(compCfg.image)) {
+      const attachment = new AttachmentBuilder(compCfg.image, { name: 'lf-image.png' });
+      filesArray.push(attachment);
+      embed.setImage('attachment://lf-image.png');
+    }
   }
 
   let mentions = '';
@@ -376,7 +389,8 @@ async function handleLF(message, mode, guildCfg) {
 
   await message.channel.send({
     content: mentions ? mentions : null,
-    embeds: [embed]
+    embeds: [embed],
+    files: filesArray
   });
 }
 
@@ -473,9 +487,14 @@ client.on('interactionCreate', async interaction => {
         const tipo = interaction.options.getString('tipo');
         const titulo = interaction.options.getString('titulo');
         const descricao = interaction.options.getString('descricao');
-        const imagem = interaction.options.getString('imagem');
-        const cargo1 = interaction.options.getRole('cargo1');
-        const cargo2 = interaction.options.getRole('cargo2');
+        const imagemArquivo = interaction.options.getAttachment('imagem_arquivo');
+        
+        const cargos = [
+          interaction.options.getRole('cargo1'),
+          interaction.options.getRole('cargo2'),
+          interaction.options.getRole('cargo3'),
+          interaction.options.getRole('cargo4')
+        ].filter(Boolean);
 
         if (!guildCfg.comp) {
           guildCfg.comp = { legit: {}, esp: {} };
@@ -486,14 +505,25 @@ client.on('interactionCreate', async interaction => {
 
         if (titulo) guildCfg.comp[tipo].title = titulo;
         if (descricao) guildCfg.comp[tipo].description = descricao;
-        if (imagem !== null) guildCfg.comp[tipo].image = imagem;
 
-        let rolesArr = [];
-        if (cargo1) rolesArr.push(cargo1.id);
-        if (cargo2) rolesArr.push(cargo2.id);
+        if (imagemArquivo) {
+          const uploadsDir = path.join(__dirname, 'uploads');
+          if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+          
+          const filePath = path.join(uploadsDir, `${guildId}-${tipo}-${Date.now()}.png`);
+          
+          try {
+            const response = await fetch(imagemArquivo.url);
+            const buffer = Buffer.from(await response.arrayBuffer());
+            fs.writeFileSync(filePath, buffer);
+            guildCfg.comp[tipo].image = filePath;
+          } catch (err) {
+            console.error('Erro ao baixar imagem:', err);
+          }
+        }
 
-        if (rolesArr.length > 0) {
-          guildCfg.comp[tipo].roles = rolesArr;
+        if (cargos.length > 0) {
+          guildCfg.comp[tipo].roles = cargos.map(c => c.id);
         }
 
         dbConfig[guildId] = guildCfg;
@@ -505,7 +535,7 @@ client.on('interactionCreate', async interaction => {
           .addFields(
             { name: '📌 Título Atual', value: guildCfg.comp[tipo].title || 'Padrão', inline: false },
             { name: '📝 Descrição', value: guildCfg.comp[tipo].description || 'Padrão', inline: false },
-            { name: '🖼️ Imagem', value: guildCfg.comp[tipo].image ? `[Link da Imagem](${guildCfg.comp[tipo].image})` : 'Nenhuma', inline: true },
+            { name: '🖼️ Imagem', value: imagemArquivo ? 'Imagem carregada com sucesso!' : 'Mantida anterior', inline: true },
             { name: '👥 Cargos Marcados', value: guildCfg.comp[tipo].roles?.length > 0 ? guildCfg.comp[tipo].roles.map(r => `<@&${r}>`).join(', ') : 'Nenhum', inline: true }
           );
 
