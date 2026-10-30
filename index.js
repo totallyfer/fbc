@@ -76,7 +76,7 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.Administrator)
     .addSubcommand(sub => 
       sub.setName('sets')
-        .setDescription('Adiciona um novo set de Flee the Facility ao sistema do servidor.')
+        .setDescription('Adiciona um novo set de Flee the Facility ao sistema.')
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do set / martelo').setRequired(true))
         .addStringOption(opt => 
           opt.setName('raridade')
@@ -91,6 +91,11 @@ const commands = [
             )
         )
         .addAttachmentOption(opt => opt.setName('imagem').setDescription('Envie a imagem do set/martelo').setRequired(true))
+    )
+    .addSubcommand(sub => 
+      sub.setName('inventario')
+        .setDescription('Altera a imagem de fundo do inventário.')
+        .addAttachmentOption(opt => opt.setName('fundo').setDescription('Envie a imagem de fundo (PNG/JPG)').setRequired(true))
     )
     .addSubcommand(sub => 
       sub.setName('ticket')
@@ -138,9 +143,15 @@ function getGuildConfig(guildId) {
       economy: {
         minWork: 80,
         maxWork: 250
+      },
+      backgrounds: {
+        inventory: ''
       }
     };
     saveData(CONFIG_FILE, db);
+  }
+  if (!db[guildId].backgrounds) {
+    db[guildId].backgrounds = { inventory: '' };
   }
   return db[guildId];
 }
@@ -376,7 +387,7 @@ async function handleLeaderboard(messageOrInteraction, guild) {
 }
 
 // ==========================================
-// FUNÇÃO DE SORTEIO DE SETS (?set / /set)
+// SORTEIO DE SETS
 // ==========================================
 async function handleSetCommand(messageOrInteraction, user, guildId) {
   const guildSets = getGuildCustomSets(guildId);
@@ -422,7 +433,6 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
     thumbnailProp = `attachment://${fileName}`;
   }
 
-  // Removido o nome do set de dentro do texto da embed, mantendo apenas na miniatura
   const embed = new EmbedBuilder()
     .setColor('#2196F3')
     .setTitle('🎉 Você ganhou um Set!')
@@ -446,25 +456,36 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
 }
 
 // ==========================================
-// INVENTÁRIO EXPANDIDO COM NOME EMBAIXO DA IMAGEM
+// INVENTÁRIO COM FUNDO CUSTOMIZÁVEL
 // ==========================================
 async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
   const guildSets = getGuildCustomSets(guildId);
+  const guildCfg = getGuildConfig(guildId);
   let userSetData = getUserSets(guildId, targetUser.id);
   const userInventory = userSetData.inventory || {};
 
   const userOwnedSets = guildSets.filter(s => (userInventory[s.id] || 0) > 0);
   const filteredSets = activeCategory === 'Todas' ? userOwnedSets : userOwnedSets.filter(s => s.rarity === activeCategory);
 
-  // Aumentado o tamanho do canvas para caber muito mais itens confortavelmente
   const canvas = createCanvas(1100, 700);
   const ctx = canvas.getContext('2d');
 
-  const gradient = ctx.createLinearGradient(0, 0, 1100, 700);
-  gradient.addColorStop(0, '#0a192f');
-  gradient.addColorStop(1, '#004080');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 1100, 700);
+  let bgLoaded = false;
+  if (guildCfg.backgrounds && guildCfg.backgrounds.inventory && fs.existsSync(guildCfg.backgrounds.inventory)) {
+    try {
+      const bgImg = await loadImage(guildCfg.backgrounds.inventory);
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+      bgLoaded = true;
+    } catch (e) {}
+  }
+
+  if (!bgLoaded) {
+    const gradient = ctx.createLinearGradient(0, 0, 1100, 700);
+    gradient.addColorStop(0, '#0a192f');
+    gradient.addColorStop(1, '#004080');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1100, 700);
+  }
 
   try {
     const avatarURL = targetUser.displayAvatarURL({ extension: 'png', size: 256 });
@@ -507,8 +528,7 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     const x = startX + col * (boxWidth + gapX);
     const y = startY + row * (boxHeight + gapY);
 
-    // Caixa de fundo da imagem do set
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
     ctx.strokeStyle = '#2196F3';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -523,7 +543,6 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
       }
     } catch (e) {}
 
-    // Badge com a quantidade possuída
     const count = userInventory[setItem.id] || 0;
     ctx.fillStyle = '#2196F3';
     ctx.beginPath();
@@ -535,12 +554,10 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     ctx.textAlign = 'center';
     ctx.fillText(`${count}`, x + boxWidth - 10, y + 14);
 
-    // Nome do set pequeno logo abaixo da imagem
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     
-    // Corta o nome se for muito longo para não ultrapassar a caixa
     let displayName = setItem.name;
     if (displayName.length > 14) {
       displayName = displayName.substring(0, 12) + '..';
@@ -668,6 +685,34 @@ client.on('interactionCreate', async interaction => {
         } catch (e) {
           console.error(e);
           return await interaction.reply({ content: '❌ Ocorreu um erro ao salvar a imagem do set.', ephemeral: true });
+        }
+      }
+
+      if (sub === 'inventario') {
+        const imagemArquivo = interaction.options.getAttachment('fundo');
+        const uploadsDir = path.join(__dirname, 'uploads_bg');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        try {
+          const resBg = await fetch(imagemArquivo.url);
+          const bufBg = Buffer.from(await resBg.arrayBuffer());
+          const bgPath = path.join(uploadsDir, `${guildId}-inv-bg.png`);
+          fs.writeFileSync(bgPath, bufBg);
+
+          guildCfg.backgrounds.inventory = bgPath;
+          let dbConfig = loadData(CONFIG_FILE, {});
+          dbConfig[guildId] = guildCfg;
+          saveData(CONFIG_FILE, dbConfig);
+
+          const embed = new EmbedBuilder()
+            .setColor('#57F287')
+            .setTitle('✅ Fundo do Inventário Atualizado!')
+            .setDescription('A nova imagem de fundo do inventário foi salva com sucesso!')
+            .setImage(imagemArquivo.url);
+
+          return await interaction.reply({ embeds: [embed], ephemeral: true });
+        } catch (e) {
+          return await interaction.reply({ content: '❌ Ocorreu um erro ao salvar a imagem de fundo do inventário.', ephemeral: true });
         }
       }
 
