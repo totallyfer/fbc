@@ -34,6 +34,7 @@ const client = new Client({
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const ECONOMY_FILE = path.join(__dirname, 'economy.json');
+const PREFIX = '?';
 
 function loadData(file, defaultVal = {}) {
   if (!fs.existsSync(file)) {
@@ -60,7 +61,7 @@ const commands = [
     .addUserOption(opt => opt.setName('usuario').setDescription('Membro para ver o saldo').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('trabalhar')
+    .setName('work')
     .setDescription('Trabalhe em sua profissão para ganhar moedas na cidade!'),
 
   new SlashCommandBuilder()
@@ -113,7 +114,246 @@ function getUserEco(dbEco, guildId, userId) {
   return dbEco[guildId][userId];
 }
 
+// ==========================================
+// FUNÇÕES COMPARTILHADAS (ECONOMIA & RANKING)
+// ==========================================
+
+async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const eco = getUserEco(dbEco, guildId, user.id);
+  const cooldown = 30000;
+  
+  if (Date.now() - eco.lastWork < cooldown) {
+    const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
+    const content = `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.`;
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content }) : await messageOrInteraction.reply(content);
+  }
+
+  const trabalhos = [
+    { cargo: 'Programador', msg: 'criou scripts incríveis' },
+    { cargo: 'Policial', msg: 'patrulhou as ruas da cidade' },
+    { cargo: 'Entregador', msg: 'fez entregas expressas' },
+    { cargo: 'Cozinheiro', msg: 'preparou pratos no restaurante' },
+    { cargo: 'Mecânico', msg: 'consertou veículos na oficina' }
+  ];
+
+  const job = trabalhos[Math.floor(Math.random() * trabalhos.length)];
+  const min = guildCfg.economy.minWork;
+  const max = guildCfg.economy.maxWork;
+  const earnings = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  eco.wallet += earnings;
+  eco.lastWork = Date.now();
+  saveData(ECONOMY_FILE, dbEco);
+
+  const embed = new EmbedBuilder()
+    .setColor('#57F287')
+    .setTitle('💼 Trabalho Realizado!')
+    .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg}!`)
+    .addFields(
+      { name: '💵 Salário', value: `**+$${earnings}**`, inline: true },
+      { name: '💰 Carteira', value: `**$${eco.wallet}**`, inline: true }
+    )
+    .setTimestamp();
+
+  if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply({ embeds: [embed] });
+  } else {
+    return await messageOrInteraction.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleSaldo(messageOrInteraction, targetUser, guildId) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const eco = getUserEco(dbEco, guildId, targetUser.id);
+  saveData(ECONOMY_FILE, dbEco);
+
+  const total = eco.wallet + eco.bank;
+
+  const embed = new EmbedBuilder()
+    .setColor('#2b2d31')
+    .setAuthor({ name: `Extrato Bancário • ${targetUser.username}`, iconURL: targetUser.displayAvatarURL() })
+    .setDescription(`Detalhes financeiros da conta de ${targetUser}.`)
+    .addFields(
+      { name: '💵 Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
+      { name: '🏦 Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
+      { name: '💎 Patrimônio Total', value: `\`$${total.toLocaleString()}\``, inline: false }
+    )
+    .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+    .setFooter({ text: 'Sistema Financeiro da Cidade', iconURL: messageOrInteraction.guild.iconURL() })
+    .setTimestamp();
+
+  if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply({ embeds: [embed] });
+  } else {
+    return await messageOrInteraction.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleLeaderboard(messageOrInteraction, guild) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const guildEconomy = dbEco[guild.id] || {};
+  const sortedUsers = Object.entries(guildEconomy)
+    .map(([userId, data]) => ({ userId, total: data.wallet + data.bank, wallet: data.wallet, bank: data.bank }))
+    .sort((a, b) => b.total - a.total);
+
+  if (sortedUsers.length === 0) {
+    const msg = '❌ Ainda não há registros na economia deste servidor.';
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg }) : await messageOrInteraction.channel.send(msg);
+  }
+
+  async function generateLeaderboardImage(page) {
+    const canvas = createCanvas(900, 850);
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#111214';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const brGrad1 = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    brGrad1.addColorStop(0, 'rgba(0, 156, 59, 0.25)');
+    brGrad1.addColorStop(0.5, 'rgba(255, 223, 0, 0.20)');
+    brGrad1.addColorStop(1, 'rgba(0, 39, 118, 0.30)');
+    ctx.fillStyle = brGrad1;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
+    ctx.fillRect(0, 0, canvas.width, 120);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(guild.name, 50, 70);
+
+    try {
+      if (guild.iconURL()) {
+        const guildIcon = await loadImage(guild.iconURL({ extension: 'png', size: 128 }));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(830, 60, 35, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(guildIcon, 795, 25, 70, 70);
+        ctx.restore();
+      }
+    } catch (e) {}
+
+    const start = page * 10;
+    const currentSlice = sortedUsers.slice(start, start + 10);
+
+    let y = 145;
+    for (let i = 0; i < currentSlice.length; i++) {
+      const entry = currentSlice[i];
+      const rank = start + i + 1;
+      let member;
+      try {
+        member = await guild.members.fetch(entry.userId);
+      } catch {
+        member = { user: { username: 'Membro Desconhecido', id: entry.userId }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
+      }
+
+      ctx.fillStyle = 'rgba(34, 35, 39, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(40, y, 820, 70, 14);
+      ctx.fill();
+
+      try {
+        const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(85, y + 35, 28, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatarImg, 57, y + 7, 56, 56);
+        ctx.restore();
+      } catch (e) {}
+
+      ctx.fillStyle = rank === 1 ? '#fEE75C' : rank === 2 ? '#BCC0C4' : rank === 3 ? '#EB459E' : '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`#${rank}  ${member.user.username}`, 135, y + 32);
+
+      ctx.fillStyle = '#b5bac1';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`ID: ${member.userId}`, 135, y + 55);
+
+      ctx.fillStyle = '#57F287';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 43);
+      ctx.textAlign = 'left';
+
+      y += 82;
+    }
+
+    return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-brasil.png' });
+  }
+
+  let currentPage = 0;
+  const maxPages = Math.ceil(sortedUsers.length / 10) - 1;
+
+  const attachment = await generateLeaderboardImage(currentPage);
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
+    new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
+  );
+
+  let msg;
+  if (messageOrInteraction.reply) {
+    msg = await messageOrInteraction.reply({ files: [attachment], components: [row], fetchReply: true });
+  } else {
+    msg = await messageOrInteraction.channel.send({ files: [attachment], components: [row] });
+  }
+
+  const authorId = messageOrInteraction.user ? messageOrInteraction.user.id : messageOrInteraction.author.id;
+  const collector = msg.createMessageComponentCollector({ time: 60000 });
+  
+  collector.on('collect', async i => {
+    if (i.user.id !== authorId) return i.reply({ content: '❌ Você não pode controlar este painel!', ephemeral: true });
+
+    if (i.customId === 'lb_prev') currentPage--;
+    if (i.customId === 'lb_next') currentPage++;
+
+    const newAttachment = await generateLeaderboardImage(currentPage);
+    const newRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
+      new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
+    );
+
+    await i.update({ files: [newAttachment], components: [newRow] });
+  });
+}
+
+// ==========================================
+// EVENTO DE MENSAGENS (COMANDOS DE PREFIXO)
+// ==========================================
+
+client.on('messageCreate', async message => {
+  if (message.author.bot || !message.guild) return;
+  if (!message.content.startsWith(PREFIX)) return;
+
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const command = args.shift().toLowerCase();
+  const guildId = message.guild.id;
+  const guildCfg = getGuildConfig(guildId);
+
+  if (command === 'work') {
+    await handleWork(message, message.author, guildId, guildCfg);
+  }
+
+  if (command === 'saldo') {
+    const target = message.mentions.users.first() || message.author;
+    await handleSaldo(message, target, guildId);
+  }
+
+  if (command === 'lb') {
+    await handleLeaderboard(message, message.guild);
+  }
+});
+
+// ==========================================
+// EVENTO DE INTERAÇÕES (SLASH COMMANDS)
+// ==========================================
+
 client.on('interactionCreate', async interaction => {
+  if (!interaction.guild) return;
   const guildId = interaction.guild.id;
   let dbConfig = loadData(CONFIG_FILE, {});
   let dbEco = loadData(ECONOMY_FILE, {});
@@ -163,63 +403,11 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'saldo') {
       const target = interaction.options.getUser('usuario') || interaction.user;
-      const eco = getUserEco(dbEco, guildId, target.id);
-      saveData(ECONOMY_FILE, dbEco);
-
-      const total = eco.wallet + eco.bank;
-
-      const embed = new EmbedBuilder()
-        .setColor('#2b2d31')
-        .setAuthor({ name: `Extrato Bancário • ${target.username}`, iconURL: target.displayAvatarURL() })
-        .setDescription(`Detalhes financeiros da conta de ${target}.`)
-        .addFields(
-          { name: '💵 Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
-          { name: '🏦 Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
-          { name: '💎 Patrimônio Total', value: `\`$${total.toLocaleString()}\``, inline: false }
-        )
-        .setThumbnail(target.displayAvatarURL({ size: 256 }))
-        .setFooter({ text: 'Sistema Financeiro da Cidade', iconURL: interaction.guild.iconURL() })
-        .setTimestamp();
-
-      return await interaction.reply({ embeds: [embed] });
+      await handleSaldo(interaction, target, guildId);
     }
 
-    if (commandName === 'trabalhar') {
-      const eco = getUserEco(dbEco, guildId, interaction.user.id);
-      const cooldown = 30000;
-      if (Date.now() - eco.lastWork < cooldown) {
-        const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
-        return await interaction.reply({ content: `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.` });
-      }
-
-      const trabalhos = [
-        { cargo: 'Programador', msg: 'criou scripts incríveis' },
-        { cargo: 'Policial', msg: 'patrulhou as ruas da cidade' },
-        { cargo: 'Entregador', msg: 'fez entregas expressas' },
-        { cargo: 'Cozinheiro', msg: 'preparou pratos no restaurante' },
-        { cargo: 'Mecânico', msg: 'consertou veículos na oficina' }
-      ];
-
-      const job = trabalhos[Math.floor(Math.random() * trabalhos.length)];
-      const min = guildCfg.economy.minWork;
-      const max = guildCfg.economy.maxWork;
-      const earnings = Math.floor(Math.random() * (max - min + 1)) + min;
-
-      eco.wallet += earnings;
-      eco.lastWork = Date.now();
-      saveData(ECONOMY_FILE, dbEco);
-
-      const embed = new EmbedBuilder()
-        .setColor('#57F287')
-        .setTitle('💼 Trabalho Realizado!')
-        .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg}!`)
-        .addFields(
-          { name: '💵 Salário', value: `**+$${earnings}**`, inline: true },
-          { name: '💰 Carteira', value: `**$${eco.wallet}**`, inline: true }
-        )
-        .setTimestamp();
-
-      return await interaction.reply({ embeds: [embed] });
+    if (commandName === 'work') {
+      await handleWork(interaction, interaction.user, guildId, guildCfg);
     }
 
     if (commandName === 'pagar') {
@@ -246,133 +434,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (commandName === 'leaderboard') {
-      const guildEconomy = dbEco[guildId] || {};
-      const sortedUsers = Object.entries(guildEconomy)
-        .map(([userId, data]) => ({ userId, total: data.wallet + data.bank, wallet: data.wallet, bank: data.bank }))
-        .sort((a, b) => b.total - a.total);
-
-      if (sortedUsers.length === 0) return await interaction.reply({ content: '❌ Ainda não há registros na economia deste servidor.' });
-
-      async function generateLeaderboardImage(page) {
-        const canvas = createCanvas(900, 850);
-        const ctx = canvas.getContext('2d');
-
-        // 1. Fundo base escuro moderno
-        ctx.fillStyle = '#111214';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 2. Fundo com efeito degradê nas cores do Brasil (Verde, Amarelo e Azul com transparência)
-        const brGrad1 = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        brGrad1.addColorStop(0, 'rgba(0, 156, 59, 0.25)');   // Verde Brasil
-        brGrad1.addColorStop(0.5, 'rgba(255, 223, 0, 0.20)'); // Amarelo Brasil
-        brGrad1.addColorStop(1, 'rgba(0, 39, 118, 0.30)');   // Azul Brasil
-        ctx.fillStyle = brGrad1;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 3. Faixa de topo superior
-        ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
-        ctx.fillRect(0, 0, canvas.width, 120);
-
-        // Nome do Servidor no Topo
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 30px sans-serif';
-        ctx.fillText(interaction.guild.name, 50, 70);
-
-        // Ícone/Logo do Servidor no canto superior direito
-        try {
-          if (interaction.guild.iconURL()) {
-            const guildIcon = await loadImage(interaction.guild.iconURL({ extension: 'png', size: 128 }));
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(830, 60, 35, 0, Math.PI * 2, true);
-            ctx.closePath();
-            ctx.clip();
-            ctx.drawImage(guildIcon, 795, 25, 70, 70);
-            ctx.restore();
-          }
-        } catch (e) {}
-
-        const start = page * 10;
-        const currentSlice = sortedUsers.slice(start, start + 10);
-
-        let y = 145;
-        for (let i = 0; i < currentSlice.length; i++) {
-          const entry = currentSlice[i];
-          const rank = start + i + 1;
-          let member;
-          try {
-            member = await interaction.guild.members.fetch(entry.userId);
-          } catch {
-            member = { user: { username: 'Membro Desconhecido', id: entry.userId }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
-          }
-
-          // Cartão do Usuário (Maior e mais espaçoso)
-          ctx.fillStyle = 'rgba(34, 35, 39, 0.92)';
-          ctx.beginPath();
-          ctx.roundRect(40, y, 820, 70, 14);
-          ctx.fill();
-
-          // Avatar circular bem maior (Raio de 28px -> 56px de tamanho)
-          try {
-            const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(85, y + 35, 28, 0, Math.PI * 2, true);
-            ctx.closePath();
-            ctx.clip();
-            ctx.drawImage(avatarImg, 57, y + 7, 56, 56);
-            ctx.restore();
-          } catch (e) {}
-
-          // Posição e Nome em destaque maior
-          ctx.fillStyle = rank === 1 ? '#fEE75C' : rank === 2 ? '#BCC0C4' : rank === 3 ? '#EB459E' : '#ffffff';
-          ctx.font = 'bold 24px sans-serif';
-          ctx.fillText(`#${rank}  ${member.user.username}`, 135, y + 32);
-
-          // ID do Usuário com fonte maior logo abaixo
-          ctx.fillStyle = '#b5bac1';
-          ctx.font = '16px sans-serif';
-          ctx.fillText(`ID: ${member.userId}`, 135, y + 55);
-
-          // Saldo Total de Moedas (À direita em destaque verde)
-          ctx.fillStyle = '#57F287';
-          ctx.font = 'bold 24px sans-serif';
-          ctx.textAlign = 'right';
-          ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 43);
-          ctx.textAlign = 'left';
-
-          y += 82;
-        }
-
-        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-brasil.png' });
-      }
-
-      let currentPage = 0;
-      const maxPages = Math.ceil(sortedUsers.length / 10) - 1;
-
-      const attachment = await generateLeaderboardImage(currentPage);
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
-        new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
-      );
-
-      const msg = await interaction.reply({ files: [attachment], components: [row], fetchReply: true });
-
-      const collector = msg.createMessageComponentCollector({ time: 60000 });
-      collector.on('collect', async i => {
-        if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Você não pode controlar este painel!', ephemeral: true });
-
-        if (i.customId === 'lb_prev') currentPage--;
-        if (i.customId === 'lb_next') currentPage++;
-
-        const newAttachment = await generateLeaderboardImage(currentPage);
-        const newRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
-          new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
-        );
-
-        await i.update({ files: [newAttachment], components: [newRow] });
-      });
+      await handleLeaderboard(interaction, interaction.guild);
     }
   }
 
