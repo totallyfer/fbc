@@ -53,7 +53,25 @@ const commands = [
     .setDescription('Painel de configuração do servidor.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.Administrator)
     .addSubcommand(sub => sub.setName('ticket').setDescription('Gerencia o sistema de tickets do servidor.'))
-    .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.')),
+    .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.'))
+    .addSubcommand(sub => 
+      sub.setName('comp')
+        .setDescription('Configura as mensagens dos comandos ?lf legit e ?lf esp.')
+        .addStringOption(opt => 
+          opt.setName('tipo')
+            .setDescription('Selecione qual modalidade vai configurar')
+            .setRequired(true)
+            .addChoices(
+              { name: 'LF Legit', value: 'legit' },
+              { name: 'LF ESP', value: 'esp' }
+            )
+        )
+        .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed').setRequired(false))
+        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed').setRequired(false))
+        .addStringOption(opt => opt.setName('imagem').setDescription('URL da imagem da embed').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo1').setDescription('Primeiro cargo a ser mencionado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo2').setDescription('Segundo cargo a ser mencionado').setRequired(false))
+    ),
 
   new SlashCommandBuilder()
     .setName('saldo')
@@ -99,6 +117,20 @@ function getGuildConfig(guildId) {
       economy: {
         minWork: 80,
         maxWork: 250
+      },
+      comp: {
+        legit: {
+          title: '🎮 Procurando Jogadores (LF LEGIT)',
+          description: 'Procurando membros para jogar no modo Legit! Monte seu time agora.',
+          image: '',
+          roles: []
+        },
+        esp: {
+          title: '🎯 Procurando Jogadores (LF ESP)',
+          description: 'Procurando membros para jogar no modo ESP! Monte seu time agora.',
+          image: '',
+          roles: []
+        }
       }
     };
     saveData(CONFIG_FILE, db);
@@ -115,7 +147,7 @@ function getUserEco(dbEco, guildId, userId) {
 }
 
 // ==========================================
-// FUNÇÕES COMPARTILHADAS (ECONOMIA & RANKING)
+// FUNÇÕES COMPARTILHADAS
 // ==========================================
 
 async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
@@ -126,7 +158,7 @@ async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
   if (Date.now() - eco.lastWork < cooldown) {
     const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
     const content = `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.`;
-    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content }) : await messageOrInteraction.reply(content);
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content }) : await messageOrInteraction.channel.send(content);
   }
 
   const trabalhos = [
@@ -321,6 +353,33 @@ async function handleLeaderboard(messageOrInteraction, guild) {
   });
 }
 
+async function handleLF(message, mode, guildCfg) {
+  if (!guildCfg.comp || !guildCfg.comp[mode]) return;
+
+  const compCfg = guildCfg.comp[mode];
+
+  const embed = new EmbedBuilder()
+    .setColor(mode === 'legit' ? '#00FFCC' : '#FF0055')
+    .setTitle(compCfg.title || `Procurando Jogadores (LF ${mode.toUpperCase()})`)
+    .setDescription(compCfg.description || 'Procurando membros para jogar!')
+    .setFooter({ text: `Enviado por ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
+    .setTimestamp();
+
+  if (compCfg.image) {
+    embed.setImage(compCfg.image);
+  }
+
+  let mentions = '';
+  if (compCfg.roles && compCfg.roles.length > 0) {
+    mentions = compCfg.roles.map(rId => `<@&${rId}>`).join(' ');
+  }
+
+  await message.channel.send({
+    content: mentions ? mentions : null,
+    embeds: [embed]
+  });
+}
+
 // ==========================================
 // EVENTO DE MENSAGENS (COMANDOS DE PREFIXO)
 // ==========================================
@@ -331,6 +390,7 @@ client.on('messageCreate', async message => {
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
+  const subCommand = args[0] ? args[0].toLowerCase() : null;
   const guildId = message.guild.id;
   const guildCfg = getGuildConfig(guildId);
 
@@ -345,6 +405,14 @@ client.on('messageCreate', async message => {
 
   if (command === 'lb') {
     await handleLeaderboard(message, message.guild);
+  }
+
+  if (command === 'lf') {
+    if (subCommand === 'legit') {
+      await handleLF(message, 'legit', guildCfg);
+    } else if (subCommand === 'esp') {
+      await handleLF(message, 'esp', guildCfg);
+    }
   }
 });
 
@@ -364,6 +432,7 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'config') {
       const sub = interaction.options.getSubcommand();
+
       if (sub === 'ticket') {
         const cfg = guildCfg.ticket;
         const embed = new EmbedBuilder()
@@ -398,6 +467,49 @@ client.on('interactionCreate', async interaction => {
           new ButtonBuilder().setCustomId('cfg_eco_values').setLabel('Ajustar Valores').setStyle(ButtonStyle.Primary).setEmoji('💰')
         );
         return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+      }
+
+      if (sub === 'comp') {
+        const tipo = interaction.options.getString('tipo');
+        const titulo = interaction.options.getString('titulo');
+        const descricao = interaction.options.getString('descricao');
+        const imagem = interaction.options.getString('imagem');
+        const cargo1 = interaction.options.getRole('cargo1');
+        const cargo2 = interaction.options.getRole('cargo2');
+
+        if (!guildCfg.comp) {
+          guildCfg.comp = { legit: {}, esp: {} };
+        }
+        if (!guildCfg.comp[tipo]) {
+          guildCfg.comp[tipo] = {};
+        }
+
+        if (titulo) guildCfg.comp[tipo].title = titulo;
+        if (descricao) guildCfg.comp[tipo].description = descricao;
+        if (imagem !== null) guildCfg.comp[tipo].image = imagem;
+
+        let rolesArr = [];
+        if (cargo1) rolesArr.push(cargo1.id);
+        if (cargo2) rolesArr.push(cargo2.id);
+
+        if (rolesArr.length > 0) {
+          guildCfg.comp[tipo].roles = rolesArr;
+        }
+
+        dbConfig[guildId] = guildCfg;
+        saveData(CONFIG_FILE, dbConfig);
+
+        const embed = new EmbedBuilder()
+          .setColor('#57F287')
+          .setTitle(`✅ Configuração do ?lf ${tipo.toUpperCase()} Atualizada!`)
+          .addFields(
+            { name: '📌 Título Atual', value: guildCfg.comp[tipo].title || 'Padrão', inline: false },
+            { name: '📝 Descrição', value: guildCfg.comp[tipo].description || 'Padrão', inline: false },
+            { name: '🖼️ Imagem', value: guildCfg.comp[tipo].image ? `[Link da Imagem](${guildCfg.comp[tipo].image})` : 'Nenhuma', inline: true },
+            { name: '👥 Cargos Marcados', value: guildCfg.comp[tipo].roles?.length > 0 ? guildCfg.comp[tipo].roles.map(r => `<@&${r}>`).join(', ') : 'Nenhum', inline: true }
+          );
+
+        return await interaction.reply({ embeds: [embed], ephemeral: true });
       }
     }
 
