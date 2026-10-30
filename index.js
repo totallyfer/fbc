@@ -46,7 +46,6 @@ function saveData(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-// Comandos Slash Globais
 const commands = [
   new SlashCommandBuilder()
     .setName('config')
@@ -62,7 +61,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('trabalhar')
-    .setDescription('Trabalhe para ganhar moedas na economia da cidade!'),
+    .setDescription('Trabalhe em sua profissão para ganhar moedas na cidade!'),
 
   new SlashCommandBuilder()
     .setName('pagar')
@@ -72,7 +71,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Mostra o ranking dos mais ricos da cidade em imagem.')
+    .setDescription('Mostra o ranking visual dos mais ricos da cidade.')
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -97,8 +96,8 @@ function getGuildConfig(guildId) {
         targetChannelId: null
       },
       economy: {
-        minWork: 50,
-        maxWork: 200
+        minWork: 80,
+        maxWork: 250
       }
     };
     saveData(CONFIG_FILE, db);
@@ -109,7 +108,7 @@ function getGuildConfig(guildId) {
 function getUserEco(dbEco, guildId, userId) {
   if (!dbEco[guildId]) dbEco[guildId] = {};
   if (!dbEco[guildId][userId]) {
-    dbEco[guildId][userId] = { wallet: 100, bank: 500, lastWork: 0 };
+    dbEco[guildId][userId] = { wallet: 150, bank: 500, lastWork: 0 };
   }
   return dbEco[guildId][userId];
 }
@@ -125,23 +124,21 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'config') {
       const sub = interaction.options.getSubcommand();
-
       if (sub === 'ticket') {
         const cfg = guildCfg.ticket;
         const embed = new EmbedBuilder()
           .setColor('#5865F2')
           .setTitle('⚙️ Painel de Controle - Tickets')
-          .setDescription('Gerencie as configurações de atendimento deste servidor:')
           .addFields(
             { name: '📌 Cargo Staff', value: cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '❌ Não definido', inline: true },
-            { name: '📢 Canal do Painel', value: cfg.targetChannelId ? `<#${cfg.targetChannelId}>` : '❌ Não definido', inline: true },
-            { name: '📝 Título Atual', value: `\`${cfg.title}\``, inline: false }
+            { name: '📢 Canal', value: cfg.targetChannelId ? `<#${cfg.targetChannelId}>` : '❌ Não definido', inline: true },
+            { name: '📝 Título', value: `\`${cfg.title}\``, inline: false }
           );
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('cfg_ticket_embed').setLabel('Editar Embed').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
           new ButtonBuilder().setCustomId('cfg_ticket_cargo').setLabel('Cargo Staff').setStyle(ButtonStyle.Secondary).setEmoji('🛡️'),
-          new ButtonBuilder().setCustomId('cfg_ticket_canal').setLabel('Canal de Envio').setStyle(ButtonStyle.Secondary).setEmoji('📺'),
+          new ButtonBuilder().setCustomId('cfg_ticket_canal').setLabel('Canal').setStyle(ButtonStyle.Secondary).setEmoji('📺'),
           new ButtonBuilder().setCustomId('cfg_ticket_enviar').setLabel('Lançar Painel').setStyle(ButtonStyle.Success).setEmoji('🚀')
         );
         return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
@@ -152,14 +149,13 @@ client.on('interactionCreate', async interaction => {
         const embed = new EmbedBuilder()
           .setColor('#00FFCC')
           .setTitle('⚙️ Painel de Controle - Economia')
-          .setDescription('Gerencie os valores de ganho do trabalho neste servidor:')
           .addFields(
-            { name: '💵 Ganho Mínimo (/trabalhar)', value: `\`$${cfg.minWork}\``, inline: true },
-            { name: '💵 Ganho Máximo (/trabalhar)', value: `\`$${cfg.maxWork}\``, inline: true }
+            { name: '💵 Ganho Mínimo', value: `\`$${cfg.minWork}\``, inline: true },
+            { name: '💵 Ganho Máximo', value: `\`$${cfg.maxWork}\``, inline: true }
           );
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('cfg_eco_values').setLabel('Ajustar Valores de Trabalho').setStyle(ButtonStyle.Primary).setEmoji('💰')
+          new ButtonBuilder().setCustomId('cfg_eco_values').setLabel('Ajustar Valores').setStyle(ButtonStyle.Primary).setEmoji('💰')
         );
         return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       }
@@ -170,25 +166,42 @@ client.on('interactionCreate', async interaction => {
       const eco = getUserEco(dbEco, guildId, target.id);
       saveData(ECONOMY_FILE, dbEco);
 
+      const total = eco.wallet + eco.bank;
+
       const embed = new EmbedBuilder()
-        .setColor('#00FFCC')
-        .setTitle(`💰 Carteira de ${target.username}`)
+        .setColor('#2b2d31')
+        .setAuthor({ name: `Extrato Bancário • ${target.username}`, iconURL: target.displayAvatarURL() })
+        .setDescription(`Aqui estão os detalhes financeiros da conta de ${target}.`)
         .addFields(
-          { name: '💵 Carteira', value: `\`$${eco.wallet}\``, inline: true },
-          { name: '🏦 Banco', value: `\`$${eco.bank}\``, inline: true }
+          { name: '💵 Dinheiro na Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
+          { name: '🏦 Dinheiro no Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
+          { name: '💎 Patrimônio Total', value: `\`$${total.toLocaleString()}\``, inline: false }
         )
-        .setThumbnail(target.displayAvatarURL());
+        .setThumbnail(target.displayAvatarURL({ size: 256 }))
+        .setFooter({ text: 'Sistema Financeiro da Cidade', iconURL: interaction.guild.iconURL() })
+        .setTimestamp();
+
       return await interaction.reply({ embeds: [embed] });
     }
 
     if (commandName === 'trabalhar') {
       const eco = getUserEco(dbEco, guildId, interaction.user.id);
-      const cooldown = 30000;
+      const cooldown = 30000; // 30 segundos
       if (Date.now() - eco.lastWork < cooldown) {
         const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
-        return await interaction.reply({ content: `⏳ Você está cansado! Trabalhe novamente em **${timeLeft} segundos**.` });
+        return await interaction.reply({ content: `⏳ Você está descansando do último turno! Volte a trabalhar em **${timeLeft} segundos**.` });
       }
 
+      const trabalhos = [
+        { cargo: 'Programador de Jogos', msg: 'criou um novo sistema para o Roblox' },
+        { cargo: 'Policial da Cidade', msg: 'patrulhou as ruas e manteve a ordem' },
+        { cargo: 'Entregador de Pizza', msg: 'fez entregas rápidas pela cidade' },
+        { cargo: 'Cozinheiro Chefe', msg: 'preparou pratos deliciosos no restaurante local' },
+        { cargo: 'Mecânico', msg: 'consertou carros esportivos na oficina' },
+        { cargo: 'Arquiteto', msg: 'projetou novas mansões luxuosas' }
+      ];
+
+      const job = trabalhos[Math.floor(Math.random() * trabalhos.length)];
       const min = guildCfg.economy.minWork;
       const max = guildCfg.economy.maxWork;
       const earnings = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -197,50 +210,74 @@ client.on('interactionCreate', async interaction => {
       eco.lastWork = Date.now();
       saveData(ECONOMY_FILE, dbEco);
 
-      return await interaction.reply({ content: `💼 Você trabalhou duro e ganhou **$${earnings}**!` });
+      const embed = new EmbedBuilder()
+        .setColor('#57F287')
+        .setTitle('💼 Turno de Trabalho Concluído!')
+        .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg} com sucesso!`)
+        .addFields(
+          { name: '💵 Salário Recebido', value: `**+$${earnings}** adicionados à carteira`, inline: true },
+          { name: '💰 Saldo na Carteira', value: `**$${eco.wallet}**`, inline: true }
+        )
+        .setTimestamp();
+
+      return await interaction.reply({ embeds: [embed] });
     }
 
     if (commandName === 'pagar') {
       const target = interaction.options.getUser('usuario');
       const amount = interaction.options.getInteger('quantia');
 
-      if (target.id === interaction.user.id) return await interaction.reply({ content: '❌ Você não pode pagar a si mesmo!', ephemeral: true });
-      if (amount <= 0) return await interaction.reply({ content: '❌ Insira um valor válido!', ephemeral: true });
+      if (target.id === interaction.user.id) return await interaction.reply({ content: '❌ Você não pode transferir dinheiro para si mesmo!', ephemeral: true });
+      if (amount <= 0) return await interaction.reply({ content: '❌ Insira um valor válido maior que zero!', ephemeral: true });
 
       const senderEco = getUserEco(dbEco, guildId, interaction.user.id);
-      if (senderEco.wallet < amount) return await interaction.reply({ content: '❌ Você não tem dinheiro suficiente na carteira!', ephemeral: true });
+      if (senderEco.wallet < amount) return await interaction.reply({ content: '❌ Você não tem esse valor disponível na carteira!', ephemeral: true });
 
       const targetEco = getUserEco(dbEco, guildId, target.id);
       senderEco.wallet -= amount;
       targetEco.wallet += amount;
       saveData(ECONOMY_FILE, dbEco);
 
-      return await interaction.reply({ content: `💸 Você transferiu com sucesso **$${amount}** para ${target}!` });
+      const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('💸 Transferência Realizada (PIX)')
+        .setDescription(`Você enviou **$${amount}** para ${target} com sucesso!`);
+
+      return await interaction.reply({ embeds: [embed] });
     }
 
     if (commandName === 'leaderboard') {
       const guildEconomy = dbEco[guildId] || {};
       const sortedUsers = Object.entries(guildEconomy)
-        .map(([userId, data]) => ({ userId, total: data.wallet + data.bank }))
+        .map(([userId, data]) => ({ userId, total: data.wallet + data.bank, wallet: data.wallet, bank: data.bank }))
         .sort((a, b) => b.total - a.total);
 
-      if (sortedUsers.length === 0) return await interaction.reply({ content: '❌ Nenhum registro de economia neste servidor ainda.' });
+      if (sortedUsers.length === 0) return await interaction.reply({ content: '❌ Ainda não há registros na economia deste servidor.' });
 
       async function generateLeaderboardImage(page) {
-        const canvas = createCanvas(700, 600);
+        const canvas = createCanvas(800, 700);
         const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = '#1e1e2f';
+        // Fundo com gradiente escuro e moderno
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        bgGrad.addColorStop(0, '#111214');
+        bgGrad.addColorStop(1, '#1e1f22');
+        ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Cabeçalho / Título
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 30px sans-serif';
-        ctx.fillText('🏆 Ranking Econômico do Servidor', 35, 50);
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillText('🏆 Ranking dos Mais Ricos', 40, 65);
+
+        ctx.fillStyle = '#949ba4';
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`Servidor: ${interaction.guild.name}`, 40, 95);
 
         const start = page * 10;
         const currentSlice = sortedUsers.slice(start, start + 10);
 
-        let y = 90;
+        let y = 135;
         for (let i = 0; i < currentSlice.length; i++) {
           const entry = currentSlice[i];
           const rank = start + i + 1;
@@ -251,39 +288,48 @@ client.on('interactionCreate', async interaction => {
             member = { user: { username: 'Membro Desconhecido' }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
           }
 
-          ctx.fillStyle = '#2d2d44';
+          // Caixa do Usuário (Cartão)
+          ctx.fillStyle = '#2b2d31';
           ctx.beginPath();
-          ctx.roundRect(30, y, 640, 45, 10);
+          ctx.roundRect(40, y, 720, 52, 12);
           ctx.fill();
 
-          ctx.fillStyle = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : '#ffffff';
-          ctx.font = 'bold 20px sans-serif';
-          ctx.fillText(`#${rank}`, 50, y + 28);
+          // Cores das medalhas/posições do Top 3
+          if (rank === 1) ctx.fillStyle = '#fEE75C'; // Ouro
+          else if (rank === 2) ctx.fillStyle = '#BCC0C4'; // Prata
+          else if (rank === 3) ctx.fillStyle = '#EB459E'; // Bronze
+          else ctx.fillStyle = '#ffffff';
 
+          ctx.font = 'bold 22px sans-serif';
+          ctx.fillText(`#${rank}`, 65, y + 33);
+
+          // Avatar circular
           try {
             const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 }));
             ctx.save();
             ctx.beginPath();
-            ctx.arc(115, y + 22.5, 18, 0, Math.PI * 2, true);
+            ctx.arc(135, y + 26, 20, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(avatarImg, 97, y + 4.5, 36, 36);
+            ctx.drawImage(avatarImg, 115, y + 6, 40, 40);
             ctx.restore();
           } catch (e) {}
 
+          // Nome do Usuário
           ctx.fillStyle = '#ffffff';
-          ctx.font = '18px sans-serif';
-          ctx.fillText(member.user.username, 150, y + 28);
-
-          ctx.fillStyle = '#00ffcc';
           ctx.font = 'bold 18px sans-serif';
+          ctx.fillText(member.user.username, 175, y + 33);
+
+          // Saldo Total (À direita)
+          ctx.fillStyle = '#57F287';
+          ctx.font = 'bold 20px sans-serif';
           ctx.textAlign = 'right';
-          ctx.fillText(`$${entry.total}`, 650, y + 28);
+          ctx.fillText(`$${entry.total.toLocaleString()}`, 735, y + 33);
           ctx.textAlign = 'left';
 
-          y += 52;
+          y += 62;
         }
-        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard.png' });
+        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-rico.png' });
       }
 
       let currentPage = 0;
@@ -315,6 +361,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+  // --- BOTÕES E CONFIGURAÇÕES ---
   if (interaction.isButton()) {
     if (interaction.customId === 'cfg_ticket_embed') {
       const modal = new ModalBuilder().setCustomId('modal_ticket_embed').setTitle('Personalizar Embed');
@@ -473,7 +520,6 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Servidor HTTP básico para manter o Web Service gratuito ativo no Render sem timeout
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bot do Discord online e ativo!\n');
