@@ -481,3 +481,17 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+
+
+// Servidor HTTP básico para o Render detetar a porta no plano gratuito
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Bot do Discord online e ativo!\n');
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Servidor web do bot rodando na porta ${PORT}`);
+});
