@@ -129,6 +129,7 @@ const commands = [
         .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed (use {user} para marcar)').setRequired(false))
         .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
         .addAttachmentOption(opt => opt.setName('miniatura').setDescription('Miniatura / Thumbnail da embed (anexo)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('fundo').setDescription('Imagem de fundo do Canva (Banner de Boas-Vindas/Saída)').setRequired(false))
     ),
 
   new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility cadastrado!'),
@@ -176,14 +177,16 @@ function getGuildConfig(guildId) {
           title: '👋 Novo Membro Chegou!',
           description: 'Seja bem-vindo(a) ao servidor, {user}!',
           color: '#57F287',
-          thumbnail: ''
+          thumbnail: '',
+          fundo: ''
         },
         saida: {
           channelId: null,
           title: '🚪 Membro Saiu',
           description: '**{user}** saiu do servidor. Esperamos que volte logo!',
           color: '#ED4245',
-          thumbnail: ''
+          thumbnail: '',
+          fundo: ''
         }
       }
     };
@@ -194,9 +197,12 @@ function getGuildConfig(guildId) {
   }
   if (!db[guildId].portao) {
     db[guildId].portao = {
-      entrada: { channelId: null, title: '👋 Novo Membro Chegou!', description: 'Seja bem-vindo(a) ao servidor, {user}!', color: '#57F287', thumbnail: '' },
-      saida: { channelId: null, title: '🚪 Membro Saiu', description: '**{user}** saiu do servidor.', color: '#ED4245', thumbnail: '' }
+      entrada: { channelId: null, title: '👋 Novo Membro Chegou!', description: 'Seja bem-vindo(a) ao servidor, {user}!', color: '#57F287', thumbnail: '', fundo: '' },
+      saida: { channelId: null, title: '🚪 Membro Saiu', description: '**{user}** saiu do servidor.', color: '#ED4245', thumbnail: '', fundo: '' }
     };
+  } else {
+    if (!db[guildId].portao.entrada.fundo) db[guildId].portao.entrada.fundo = '';
+    if (!db[guildId].portao.saida.fundo) db[guildId].portao.saida.fundo = '';
   }
   return db[guildId];
 }
@@ -656,27 +662,38 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
-// GERAÇÃO DE IMAGEM ESTILO CANVA (WELCOME)
+// GERAÇÃO DE IMAGEM ESTILO CANVA (WELCOME/LEAVE)
 // ==========================================
-async function generateWelcomeImage(member) {
+async function generateCanvaBanner(member, customBgPath) {
   const canvas = createCanvas(1000, 400);
   const ctx = canvas.getContext('2d');
 
-  // Fundo moderno com gradiente estilo Canva
-  const gradient = ctx.createLinearGradient(0, 0, 1000, 400);
-  gradient.addColorStop(0, '#1a1c29');
-  gradient.addColorStop(0.5, '#2b1055');
-  gradient.addColorStop(1, '#7597de');
-  ctx.fillStyle = gradient;
+  let bgLoaded = false;
+  if (customBgPath && fs.existsSync(customBgPath)) {
+    try {
+      const bgImg = await loadImage(customBgPath);
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+      bgLoaded = true;
+    } catch (e) {
+      console.error('Erro ao carregar fundo customizado do Canva:', e);
+    }
+  }
+
+  if (!bgLoaded) {
+    // Fundo padrão moderno estilo Canva caso não tenha enviado imagem customizada
+    const gradient = ctx.createLinearGradient(0, 0, 1000, 400);
+    gradient.addColorStop(0, '#1a1c29');
+    gradient.addColorStop(0.5, '#2b1055');
+    gradient.addColorStop(1, '#7597de');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Camada escura semi-transparente para dar destaque ao texto e avatar
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Detalhes decorativos nas bordas
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-  ctx.beginPath();
-  ctx.arc(900, 50, 200, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Avatar circular com borda brilhante
+  // Avatar circular com borda estilizada
   try {
     const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
     const avatarImg = await loadImage(avatarURL);
@@ -684,10 +701,6 @@ async function generateWelcomeImage(member) {
     const centerX = 200;
     const centerY = 200;
     const radius = 90;
-
-    // Sombra do avatar
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 20;
 
     ctx.save();
     ctx.beginPath();
@@ -697,35 +710,31 @@ async function generateWelcomeImage(member) {
     ctx.drawImage(avatarImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
     ctx.restore();
 
-    // Reset da sombra
-    ctx.shadowBlur = 0;
-
-    // Borda do avatar
     ctx.strokeStyle = '#57F287';
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
     ctx.stroke();
   } catch (e) {
-    console.error('Erro ao carregar avatar no Canva:', e);
+    console.error('Erro ao carregar avatar:', e);
   }
 
   // Textos estilizados
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 45px sans-serif';
-  ctx.fillText('BEM-VINDO(A)!', 350, 150);
+  ctx.fillText('BEM-VINDO(A)!', 350, 145);
 
   ctx.fillStyle = '#57F287';
   ctx.font = 'bold 32px sans-serif';
   let username = member.user.username;
   if (username.length > 18) username = username.substring(0, 16) + '...';
-  ctx.fillText(username, 350, 205);
+  ctx.fillText(username, 350, 200);
 
-  ctx.fillStyle = '#b5bac1';
+  ctx.fillStyle = '#d0d3dc';
   ctx.font = '22px sans-serif';
-  ctx.fillText(`ID do Servidor: ${member.guild.name}`, 350, 260);
+  ctx.fillText(`Servidor: ${member.guild.name}`, 350, 250);
 
-  return new AttachmentBuilder(await canvas.encode('png'), { name: 'welcome-banner.png' });
+  return new AttachmentBuilder(await canvas.encode('png'), { name: 'banner-portao.png' });
 }
 
 // ==========================================
@@ -754,13 +763,12 @@ client.on('guildMemberAdd', async member => {
 
   let filesArray = [];
   
-  // Gera a imagem no Canva com o avatar do membro e envia
   try {
-    const bannerAttachment = await generateWelcomeImage(member);
+    const bannerAttachment = await generateCanvaBanner(member, portao.fundo);
     filesArray.push(bannerAttachment);
-    embed.setImage('attachment://welcome-banner.png');
+    embed.setImage('attachment://banner-portao.png');
   } catch (err) {
-    console.error('Erro ao gerar imagem de boas-vindas:', err);
+    console.error('Erro ao gerar imagem de entrada:', err);
   }
 
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
@@ -797,6 +805,15 @@ client.on('guildMemberRemove', async member => {
     .setTimestamp();
 
   let filesArray = [];
+
+  try {
+    const bannerAttachment = await generateCanvaBanner(member, portao.fundo);
+    filesArray.push(bannerAttachment);
+    embed.setImage('attachment://banner-portao.png');
+  } catch (err) {
+    console.error('Erro ao gerar imagem de saída:', err);
+  }
+
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
     embed.setThumbnail('attachment://portao-thumb.png');
@@ -971,6 +988,7 @@ client.on('interactionCreate', async interaction => {
         const descOpt = interaction.options.getString('descricao');
         const corOpt = interaction.options.getString('cor');
         const miniaturaArquivo = interaction.options.getAttachment('miniatura');
+        const fundoArquivo = interaction.options.getAttachment('fundo');
 
         let targetCfg = guildCfg.portao[tipo];
 
@@ -992,6 +1010,16 @@ client.on('interactionCreate', async interaction => {
           } catch (e) {}
         }
 
+        if (fundoArquivo) {
+          try {
+            const resFundo = await fetch(fundoArquivo.url);
+            const bufFundo = Buffer.from(await resFundo.arrayBuffer());
+            const fundoPath = path.join(uploadsDir, `${guildId}-portao-${tipo}-fundo.png`);
+            fs.writeFileSync(fundoPath, bufFundo);
+            targetCfg.fundo = fundoPath;
+          } catch (e) {}
+        }
+
         let dbConfig = loadData(CONFIG_FILE, {});
         dbConfig[guildId] = guildCfg;
         saveData(CONFIG_FILE, dbConfig);
@@ -1006,8 +1034,8 @@ client.on('interactionCreate', async interaction => {
             { name: '📝 Descrição', value: `\`${targetCfg.description}\``, inline: false }
           );
 
-        if (targetCfg.thumbnail && fs.existsSync(targetCfg.thumbnail)) {
-          embedCfg.setThumbnail(miniaturaArquivo ? miniaturaArquivo.url : null);
+        if (fundoArquivo) {
+          embedCfg.setImage(fundoArquivo.url);
         }
 
         return await interaction.reply({ embeds: [embedCfg], ephemeral: true });
