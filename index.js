@@ -254,32 +254,40 @@ client.on('interactionCreate', async interaction => {
       if (sortedUsers.length === 0) return await interaction.reply({ content: '❌ Ainda não há registros na economia deste servidor.' });
 
       async function generateLeaderboardImage(page) {
-        const canvas = createCanvas(900, 750);
+        const canvas = createCanvas(900, 850);
         const ctx = canvas.getContext('2d');
 
-        // Fundo com tom escuro elegante idêntico ao modelo
-        ctx.fillStyle = '#17181c';
+        // 1. Fundo base escuro moderno
+        ctx.fillStyle = '#111214';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Faixa de fundo decorativa superior
-        ctx.fillStyle = '#1f2024';
-        ctx.fillRect(0, 0, canvas.width, 110);
+        // 2. Fundo com efeito degradê nas cores do Brasil (Verde, Amarelo e Azul com transparência)
+        const brGrad1 = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        brGrad1.addColorStop(0, 'rgba(0, 156, 59, 0.25)');   // Verde Brasil
+        brGrad1.addColorStop(0.5, 'rgba(255, 223, 0, 0.20)'); // Amarelo Brasil
+        brGrad1.addColorStop(1, 'rgba(0, 39, 118, 0.30)');   // Azul Brasil
+        ctx.fillStyle = brGrad1;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 3. Faixa de topo superior
+        ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
+        ctx.fillRect(0, 0, canvas.width, 120);
 
         // Nome do Servidor no Topo
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px sans-serif';
-        ctx.fillText(interaction.guild.name, 45, 65);
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillText(interaction.guild.name, 50, 70);
 
-        // Ícone/Logo do Servidor no canto superior direito (se houver)
+        // Ícone/Logo do Servidor no canto superior direito
         try {
           if (interaction.guild.iconURL()) {
             const guildIcon = await loadImage(interaction.guild.iconURL({ extension: 'png', size: 128 }));
             ctx.save();
             ctx.beginPath();
-            ctx.arc(835, 55, 30, 0, Math.PI * 2, true);
+            ctx.arc(830, 60, 35, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(guildIcon, 805, 25, 60, 60);
+            ctx.drawImage(guildIcon, 795, 25, 70, 70);
             ctx.restore();
           }
         } catch (e) {}
@@ -287,7 +295,7 @@ client.on('interactionCreate', async interaction => {
         const start = page * 10;
         const currentSlice = sortedUsers.slice(start, start + 10);
 
-        let y = 135;
+        let y = 145;
         for (let i = 0; i < currentSlice.length; i++) {
           const entry = currentSlice[i];
           const rank = start + i + 1;
@@ -298,45 +306,45 @@ client.on('interactionCreate', async interaction => {
             member = { user: { username: 'Membro Desconhecido', id: entry.userId }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
           }
 
-          // Bloco do Cartão do Usuário
-          ctx.fillStyle = '#222327';
+          // Cartão do Usuário (Maior e mais espaçoso)
+          ctx.fillStyle = 'rgba(34, 35, 39, 0.92)';
           ctx.beginPath();
-          ctx.roundRect(40, y, 820, 56, 10);
+          ctx.roundRect(40, y, 820, 70, 14);
           ctx.fill();
 
-          // Avatar circular à esquerda
+          // Avatar circular bem maior (Raio de 28px -> 56px de tamanho)
           try {
-            const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 }));
+            const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
             ctx.save();
             ctx.beginPath();
-            ctx.arc(78, y + 28, 22, 0, Math.PI * 2, true);
+            ctx.arc(85, y + 35, 28, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(avatarImg, 56, y + 6, 44, 44);
+            ctx.drawImage(avatarImg, 57, y + 7, 56, 56);
             ctx.restore();
           } catch (e) {}
 
-          // Posição e Nome (#1 Nome do Usuário)
+          // Posição e Nome em destaque maior
           ctx.fillStyle = rank === 1 ? '#fEE75C' : rank === 2 ? '#BCC0C4' : rank === 3 ? '#EB459E' : '#ffffff';
-          ctx.font = 'bold 20px sans-serif';
-          ctx.fillText(`#${rank} ${member.user.username}`, 120, y + 26);
+          ctx.font = 'bold 24px sans-serif';
+          ctx.fillText(`#${rank}  ${member.user.username}`, 135, y + 32);
 
-          // ID do Usuário logo abaixo
-          ctx.fillStyle = '#949ba4';
-          ctx.font = '14px sans-serif';
-          ctx.fillText(`ID: ${member.userId}`, 120, y + 46);
+          // ID do Usuário com fonte maior logo abaixo
+          ctx.fillStyle = '#b5bac1';
+          ctx.font = '16px sans-serif';
+          ctx.fillText(`ID: ${member.userId}`, 135, y + 55);
 
-          // Saldo Total de Moedas (À direita)
+          // Saldo Total de Moedas (À direita em destaque verde)
           ctx.fillStyle = '#57F287';
-          ctx.font = 'bold 20px sans-serif';
+          ctx.font = 'bold 24px sans-serif';
           ctx.textAlign = 'right';
-          ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 36);
+          ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 43);
           ctx.textAlign = 'left';
 
-          y += 66;
+          y += 82;
         }
 
-        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-moedas.png' });
+        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-brasil.png' });
       }
 
       let currentPage = 0;
