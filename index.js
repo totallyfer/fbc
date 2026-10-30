@@ -422,10 +422,11 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
     thumbnailProp = `attachment://${fileName}`;
   }
 
+  // Removido o nome do set de dentro do texto da embed, mantendo apenas na miniatura
   const embed = new EmbedBuilder()
     .setColor('#2196F3')
     .setTitle('🎉 Você ganhou um Set!')
-    .setDescription(`## ${pendingSet.name}\n\n**Raridade:** ${pendingSet.rarity}\n\nClique no botão abaixo para resgatar este item para o seu inventário!`);
+    .setDescription(`**Raridade:** ${pendingSet.rarity}\n\nClique no botão abaixo para resgatar este item para o seu inventário!`);
 
   if (thumbnailProp) embed.setThumbnail(thumbnailProp);
 
@@ -445,7 +446,7 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
 }
 
 // ==========================================
-// INVENTÁRIO EM CANVAS
+// INVENTÁRIO EXPANDIDO COM NOME EMBAIXO DA IMAGEM
 // ==========================================
 async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
   const guildSets = getGuildCustomSets(guildId);
@@ -455,14 +456,15 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
   const userOwnedSets = guildSets.filter(s => (userInventory[s.id] || 0) > 0);
   const filteredSets = activeCategory === 'Todas' ? userOwnedSets : userOwnedSets.filter(s => s.rarity === activeCategory);
 
-  const canvas = createCanvas(1000, 500);
+  // Aumentado o tamanho do canvas para caber muito mais itens confortavelmente
+  const canvas = createCanvas(1100, 700);
   const ctx = canvas.getContext('2d');
 
-  const gradient = ctx.createLinearGradient(0, 0, 1000, 500);
+  const gradient = ctx.createLinearGradient(0, 0, 1100, 700);
   gradient.addColorStop(0, '#0a192f');
   gradient.addColorStop(1, '#004080');
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 1000, 500);
+  ctx.fillRect(0, 0, 1100, 700);
 
   try {
     const avatarURL = targetUser.displayAvatarURL({ extension: 'png', size: 256 });
@@ -492,42 +494,58 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 
   const startX = 50;
   const startY = 180;
-  const boxSize = 80;
-  const gap = 20;
-  const maxCols = 8;
+  const boxWidth = 110;
+  const boxHeight = 110;
+  const gapX = 25;
+  const gapY = 35;
+  const maxCols = 7;
 
-  for (let i = 0; i < Math.min(filteredSets.length, 24); i++) {
+  for (let i = 0; i < Math.min(filteredSets.length, 28); i++) {
     const setItem = filteredSets[i];
     const col = i % maxCols;
     const row = Math.floor(i / maxCols);
-    const x = startX + col * (boxSize + gap);
-    const y = startY + row * (boxSize + gap);
+    const x = startX + col * (boxWidth + gapX);
+    const y = startY + row * (boxHeight + gapY);
 
+    // Caixa de fundo da imagem do set
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.strokeStyle = '#2196F3';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(x, y, boxSize, boxSize, 10);
+    ctx.roundRect(x, y, boxWidth, 85, 10);
     ctx.fill();
     ctx.stroke();
 
     try {
       if (setItem.imagePath && fs.existsSync(setItem.imagePath)) {
         const setImg = await loadImage(setItem.imagePath);
-        ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
+        ctx.drawImage(setImg, x + 8, y + 8, boxWidth - 16, 69);
       }
     } catch (e) {}
 
+    // Badge com a quantidade possuída
     const count = userInventory[setItem.id] || 0;
     ctx.fillStyle = '#2196F3';
     ctx.beginPath();
-    ctx.arc(x + boxSize - 12, y + 12, 12, 0, Math.PI * 2);
+    ctx.arc(x + boxWidth - 10, y + 10, 12, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${count}`, x + boxSize - 12, y + 16);
+    ctx.fillText(`${count}`, x + boxWidth - 10, y + 14);
+
+    // Nome do set pequeno logo abaixo da imagem
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    
+    // Corta o nome se for muito longo para não ultrapassar a caixa
+    let displayName = setItem.name;
+    if (displayName.length > 14) {
+      displayName = displayName.substring(0, 12) + '..';
+    }
+    ctx.fillText(displayName, x + (boxWidth / 2), y + 103);
     ctx.textAlign = 'left';
   }
 
