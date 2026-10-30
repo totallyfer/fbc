@@ -111,6 +111,15 @@ const commands = [
         .addAttachmentOption(opt => opt.setName('miniatura_arquivo').setDescription('Miniatura / Thumbnail do painel (anexo)').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo_staff').setDescription('Cargo de atendimento da staff').setRequired(false))
         .addChannelOption(opt => opt.setName('canal_envio').setDescription('Canal onde o painel será enviado').setRequired(false))
+    )
+    .addSubcommand(sub =>
+      sub.setName('portao')
+        .setDescription('Configura o sistema de entrada e saída (Portão).')
+        .addChannelOption(opt => opt.setName('canal').setDescription('Canal de portão para os avisos').setRequired(false))
+        .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed (use {user} para o nome)').setRequired(false))
+        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed (use {user} para marcar)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Imagem grande da embed (anexo)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('miniatura').setDescription('Miniatura / Thumbnail da embed (anexo)').setRequired(false))
     ),
 
   new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility cadastrado!'),
@@ -151,12 +160,28 @@ function getGuildConfig(guildId) {
       backgrounds: {
         inventory: '',
         leaderboard: ''
+      },
+      portao: {
+        channelId: null,
+        title: '👋 Novo Membro Chegou!',
+        description: 'Seja bem-vindo(a) ao servidor, {user}!',
+        image: '',
+        thumbnail: ''
       }
     };
     saveData(CONFIG_FILE, db);
   }
   if (!db[guildId].backgrounds) {
     db[guildId].backgrounds = { inventory: '', leaderboard: '' };
+  }
+  if (!db[guildId].portao) {
+    db[guildId].portao = {
+      channelId: null,
+      title: '👋 Novo Membro Chegou!',
+      description: 'Seja bem-vindo(a) ao servidor, {user}!',
+      image: '',
+      thumbnail: ''
+    };
   }
   return db[guildId];
 }
@@ -284,7 +309,6 @@ async function handleLeaderboard(messageOrInteraction, guild) {
     const canvas = createCanvas(900, 850);
     const ctx = canvas.getContext('2d');
 
-    // Verifica e aplica o fundo customizado da Leaderboard se existir
     let bgLoaded = false;
     if (guildCfg.backgrounds && guildCfg.backgrounds.leaderboard && fs.existsSync(guildCfg.backgrounds.leaderboard)) {
       try {
@@ -617,6 +641,82 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
+// EVENTOS DE ENTRADA E SAÍDA (PORTÃO)
+// ==========================================
+client.on('guildMemberAdd', async member => {
+  const guildId = member.guild.id;
+  const guildCfg = getGuildConfig(guildId);
+  const portao = guildCfg.portao;
+
+  if (!portao || !portao.channelId) return;
+  const channel = member.guild.channels.cache.get(portao.channelId);
+  if (!channel) return;
+
+  const rawTitle = portao.title || '👋 Novo Membro Chegou!';
+  const rawDesc = portao.description || 'Seja bem-vindo(a) ao servidor, {user}!';
+
+  const formattedTitle = rawTitle.replace(/{user}/g, member.user.username);
+  const formattedDesc = rawDesc.replace(/{user}/g, `${member}`);
+
+  const embed = new EmbedBuilder()
+    .setColor('#57F287')
+    .setTitle(formattedTitle)
+    .setDescription(formattedDesc)
+    .setTimestamp();
+
+  let filesArray = [];
+  if (portao.image && fs.existsSync(portao.image)) {
+    filesArray.push(new AttachmentBuilder(portao.image, { name: 'portao-img.png' }));
+    embed.setImage('attachment://portao-img.png');
+  }
+  if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
+    filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
+    embed.setThumbnail('attachment://portao-thumb.png');
+  }
+
+  try {
+    await channel.send({ embeds: [embed], files: filesArray });
+  } catch (err) {
+    console.error('Erro ao enviar mensagem de boas-vindas:', err);
+  }
+});
+
+client.on('guildMemberRemove', async member => {
+  const guildId = member.guild.id;
+  const guildCfg = getGuildConfig(guildId);
+  const portao = guildCfg.portao;
+
+  if (!portao || !portao.channelId) return;
+  const channel = member.guild.channels.cache.get(portao.channelId);
+  if (!channel) return;
+
+  const leaveTitle = '🚪 Membro Saiu';
+  const leaveDesc = `**${member.user.username}** saiu do servidor. Esperamos que volte logo!`;
+
+  const embed = new EmbedBuilder()
+    .setColor('#ED4245')
+    .setTitle(leaveTitle)
+    .setDescription(leaveDesc)
+    .setTimestamp();
+
+  let filesArray = [];
+  if (portao.image && fs.existsSync(portao.image)) {
+    filesArray.push(new AttachmentBuilder(portao.image, { name: 'portao-img.png' }));
+    embed.setImage('attachment://portao-img.png');
+  }
+  if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
+    filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
+    embed.setThumbnail('attachment://portao-thumb.png');
+  }
+
+  try {
+    await channel.send({ embeds: [embed], files: filesArray });
+  } catch (err) {
+    console.error('Erro ao enviar mensagem de saída:', err);
+  }
+});
+
+// ==========================================
 // EVENTOS DE MENSAGENS (PREFIXO ?)
 // ==========================================
 client.on('messageCreate', async message => {
@@ -769,6 +869,61 @@ client.on('interactionCreate', async interaction => {
         }
 
         return await interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      if (sub === 'portao') {
+        const canal = interaction.options.getChannel('canal');
+        const tituloOpt = interaction.options.getString('titulo');
+        const descOpt = interaction.options.getString('descricao');
+        const imagemArquivo = interaction.options.getAttachment('imagem');
+        const miniaturaArquivo = interaction.options.getAttachment('miniatura');
+
+        if (canal) guildCfg.portao.channelId = canal.id;
+        if (tituloOpt) guildCfg.portao.title = tituloOpt;
+        if (descOpt) guildCfg.portao.description = descOpt;
+
+        const uploadsDir = path.join(__dirname, 'uploads_portao');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        if (imagemArquivo) {
+          try {
+            const resImg = await fetch(imagemArquivo.url);
+            const bufImg = Buffer.from(await resImg.arrayBuffer());
+            const imgPath = path.join(uploadsDir, `${guildId}-portao-img.png`);
+            fs.writeFileSync(imgPath, bufImg);
+            guildCfg.portao.image = imgPath;
+          } catch (e) {}
+        }
+
+        if (miniaturaArquivo) {
+          try {
+            const resThumb = await fetch(miniaturaArquivo.url);
+            const bufThumb = Buffer.from(await resThumb.arrayBuffer());
+            const thumbPath = path.join(uploadsDir, `${guildId}-portao-thumb.png`);
+            fs.writeFileSync(thumbPath, bufThumb);
+            guildCfg.portao.thumbnail = thumbPath;
+          } catch (e) {}
+        }
+
+        let dbConfig = loadData(CONFIG_FILE, {});
+        dbConfig[guildId] = guildCfg;
+        saveData(CONFIG_FILE, dbConfig);
+
+        const embedCfg = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle('✅ Configuração do Portão Atualizada!')
+          .addFields(
+            { name: '📢 Canal', value: guildCfg.portao.channelId ? `<#${guildCfg.portao.channelId}>` : '❌ Não definido', inline: true },
+            { name: '📌 Título', value: `\`${guildCfg.portao.title}\``, inline: false },
+            { name: '📝 Descrição', value: `\`${guildCfg.portao.description}\``, inline: false }
+          );
+
+        if (guildCfg.portao.image && fs.existsSync(guildCfg.portao.image)) {
+          // Apenas para visualização no retorno
+          embedCfg.setImage(imagemArquivo ? imagemArquivo.url : null);
+        }
+
+        return await interaction.reply({ embeds: [embedCfg], ephemeral: true });
       }
 
       if (sub === 'ticket') {
