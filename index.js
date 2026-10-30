@@ -11,6 +11,9 @@ const {
   SlashCommandBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   RoleSelectMenuBuilder,
   ChannelSelectMenuBuilder,
   AttachmentBuilder
@@ -43,27 +46,14 @@ function saveData(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-// Comandos Slash com as opções direto no /config ticket
+// Comandos Slash Globais
 const commands = [
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Painel de configuração do servidor.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.Administrator)
-    .addSubcommand(sub =>
-      sub.setName('ticket')
-        .setDescription('Configura e envia o painel de tickets.')
-        .addChannelOption(opt => opt.setName('canal').setDescription('Canal onde o painel será enviado').setChannelTypes([ChannelType.GuildText]).setRequired(true))
-        .addStringOption(opt => opt.setName('titulo').setDescription('Título do Embed').setRequired(true))
-        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição do Embed').setRequired(true))
-        .addStringOption(opt => opt.setName('cor').setDescription('Cor em Hex (ex: #5865F2)').setRequired(false))
-        .addRoleOption(opt => opt.setName('cargo_staff').setDescription('Cargo de atendimento da staff').setRequired(false))
-        .addStringOption(opt => opt.setName('miniatura').setDescription('URL da miniatura (Thumbnail)').setRequired(false))
-        .addStringOption(opt => opt.setName('imagem').setDescription('URL da imagem principal').setRequired(false))
-    )
-    .addSubcommand(sub =>
-      sub.setName('economia')
-        .setDescription('Gerencia as configurações de economia do servidor.')
-    ),
+    .addSubcommand(sub => sub.setName('ticket').setDescription('Gerencia o sistema de tickets do servidor.'))
+    .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.')),
 
   new SlashCommandBuilder()
     .setName('saldo')
@@ -100,7 +90,16 @@ function getGuildConfig(guildId) {
   let db = loadData(CONFIG_FILE, {});
   if (!db[guildId]) {
     db[guildId] = {
-      economy: { minWork: 50, maxWork: 200 }
+      ticket: {
+        title: '🎫 Central de Atendimento & Suporte',
+        description: 'Selecione abaixo o motivo do seu contato para abrir um ticket.',
+        staffRoleId: null,
+        targetChannelId: null
+      },
+      economy: {
+        minWork: 50,
+        maxWork: 200
+      }
     };
     saveData(CONFIG_FILE, db);
   }
@@ -128,48 +127,24 @@ client.on('interactionCreate', async interaction => {
       const sub = interaction.options.getSubcommand();
 
       if (sub === 'ticket') {
-        const canal = interaction.options.getChannel('canal');
-        const titulo = interaction.options.getString('titulo');
-        const descricao = interaction.options.getString('descricao');
-        const cor = interaction.options.getString('cor') || '#5865F2';
-        const cargoStaff = interaction.options.getRole('cargo_staff');
-        const miniatura = interaction.options.getString('miniatura');
-        const imagem = interaction.options.getString('imagem');
+        const cfg = guildCfg.ticket;
+        const embed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle('⚙️ Painel de Controle - Tickets')
+          .setDescription('Gerencie as configurações de atendimento deste servidor:')
+          .addFields(
+            { name: '📌 Cargo Staff', value: cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '❌ Não definido', inline: true },
+            { name: '📢 Canal do Painel', value: cfg.targetChannelId ? `<#${cfg.targetChannelId}>` : '❌ Não definido', inline: true },
+            { name: '📝 Título Atual', value: `\`${cfg.title}\``, inline: false }
+          );
 
-        // Salva as configurações de staff deste servidor se o cargo foi fornecido
-        if (cargoStaff) {
-          if (!guildCfg.ticket) guildCfg.ticket = {};
-          guildCfg.ticket.staffRoleId = cargoStaff.id;
-          saveData(CONFIG_FILE, dbConfig);
-        }
-
-        const staffRoleId = guildCfg.ticket?.staffRoleId || null;
-
-        const ticketEmbed = new EmbedBuilder()
-          .setColor(cor)
-          .setTitle(titulo)
-          .setDescription(descricao)
-          .addFields({ name: '🎮 Jogos & Categorias', value: '• Flee The Facility\n• Murder Mystery 2\n• Piggy\n• Suporte Geral' })
-          .setTimestamp()
-          .setFooter({ text: 'Sistema de Tickets', iconURL: interaction.guild.iconURL() });
-
-        if (miniatura) ticketEmbed.setThumbnail(miniatura);
-        if (imagem) ticketEmbed.setImage(imagem);
-
-        const selectMenu = new StringSelectMenuBuilder()
-          .setCustomId('ticket_select_menu')
-          .setPlaceholder('Abrir ticket')
-          .addOptions([
-            { label: 'Flee The Facility', value: 'ticket_ftf', emoji: '🏃‍♂️' },
-            { label: 'Murder Mystery 2', value: 'ticket_mm2', emoji: '🔪' },
-            { label: 'Piggy', value: 'ticket_piggy', emoji: '🐷' },
-            { label: 'Suporte Geral', value: 'ticket_geral', emoji: '🎫' }
-          ]);
-
-        const row = new ActionRowBuilder().addComponents(selectMenu);
-
-        await canal.send({ embeds: [ticketEmbed], components: [row] });
-        return await interaction.reply({ content: `✅ Painel de tickets enviado com sucesso para ${canal} com as configurações personalizadas!`, ephemeral: true });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('cfg_ticket_embed').setLabel('Editar Embed').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
+          new ButtonBuilder().setCustomId('cfg_ticket_cargo').setLabel('Cargo Staff').setStyle(ButtonStyle.Secondary).setEmoji('🛡️'),
+          new ButtonBuilder().setCustomId('cfg_ticket_canal').setLabel('Canal de Envio').setStyle(ButtonStyle.Secondary).setEmoji('📺'),
+          new ButtonBuilder().setCustomId('cfg_ticket_enviar').setLabel('Lançar Painel').setStyle(ButtonStyle.Success).setEmoji('🚀')
+        );
+        return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       }
 
       if (sub === 'economia') {
@@ -177,8 +152,16 @@ client.on('interactionCreate', async interaction => {
         const embed = new EmbedBuilder()
           .setColor('#00FFCC')
           .setTitle('⚙️ Painel de Controle - Economia')
-          .setDescription(`Valores atuais de ganho:\n• Mínimo: **$${cfg.minWork}**\n• Máximo: **$${cfg.maxWork}**`);
-        return await interaction.reply({ embeds: [embed], ephemeral: true });
+          .setDescription('Gerencie os valores de ganho do trabalho neste servidor:')
+          .addFields(
+            { name: '💵 Ganho Mínimo (/trabalhar)', value: `\`$${cfg.minWork}\``, inline: true },
+            { name: '💵 Ganho Máximo (/trabalhar)', value: `\`$${cfg.maxWork}\``, inline: true }
+          );
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('cfg_eco_values').setLabel('Ajustar Valores de Trabalho').setStyle(ButtonStyle.Primary).setEmoji('💰')
+        );
+        return await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
       }
     }
 
@@ -332,8 +315,61 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- INTERAÇÕES DE BOTÕES DENTRO DOS TICKETS ---
   if (interaction.isButton()) {
+    if (interaction.customId === 'cfg_ticket_embed') {
+      const modal = new ModalBuilder().setCustomId('modal_ticket_embed').setTitle('Personalizar Embed');
+      const titleInput = new TextInputBuilder().setCustomId('embed_title').setLabel('Título').setStyle(TextInputStyle.Short).setValue(guildCfg.ticket.title).setRequired(true);
+      const descInput = new TextInputBuilder().setCustomId('embed_desc').setLabel('Descrição').setStyle(TextInputStyle.Paragraph).setValue(guildCfg.ticket.description).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(titleInput), new ActionRowBuilder().addComponents(descInput));
+      return await interaction.showModal(modal);
+    }
+
+    if (interaction.customId === 'cfg_ticket_cargo') {
+      const row = new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('select_role_staff').setPlaceholder('Cargo de staff...'));
+      return await interaction.reply({ content: 'Selecione o cargo:', components: [row], ephemeral: true });
+    }
+
+    if (interaction.customId === 'cfg_ticket_canal') {
+      const row = new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('select_channel_target').setChannelTypes([ChannelType.GuildText]).setPlaceholder('Canal...'));
+      return await interaction.reply({ content: 'Selecione o canal de destino:', components: [row], ephemeral: true });
+    }
+
+    if (interaction.customId === 'cfg_ticket_enviar') {
+      const cfg = guildCfg.ticket;
+      if (!cfg.targetChannelId) return await interaction.reply({ content: '❌ Defina um canal de envio primeiro!', ephemeral: true });
+      const targetChannel = interaction.guild.channels.cache.get(cfg.targetChannelId);
+      if (!targetChannel) return await interaction.reply({ content: '❌ Canal não encontrado.', ephemeral: true });
+
+      const ticketEmbed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle(cfg.title)
+        .setDescription(cfg.description)
+        .addFields({ name: '🎮 Jogos & Categorias', value: '• Flee The Facility\n• Murder Mystery 2\n• Piggy\n• Suporte Geral' })
+        .setTimestamp()
+        .setFooter({ text: 'Sistema de Tickets', iconURL: interaction.guild.iconURL() });
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_select_menu')
+        .setPlaceholder('Abrir ticket')
+        .addOptions([
+          { label: 'Flee The Facility', value: 'ticket_ftf', emoji: '🏃‍♂️' },
+          { label: 'Murder Mystery 2', value: 'ticket_mm2', emoji: '🔪' },
+          { label: 'Piggy', value: 'ticket_piggy', emoji: '🐷' },
+          { label: 'Suporte Geral', value: 'ticket_geral', emoji: '🎫' }
+        ]);
+
+      await targetChannel.send({ embeds: [ticketEmbed], components: [new ActionRowBuilder().addComponents(selectMenu)] });
+      return await interaction.reply({ content: `✅ Painel enviado para ${targetChannel}!`, ephemeral: true });
+    }
+
+    if (interaction.customId === 'cfg_eco_values') {
+      const modal = new ModalBuilder().setCustomId('modal_eco_values').setTitle('Ajustar Valores de Trabalho');
+      const minInput = new TextInputBuilder().setCustomId('eco_min').setLabel('Ganho Mínimo').setStyle(TextInputStyle.Short).setValue(String(guildCfg.economy.minWork)).setRequired(true);
+      const maxInput = new TextInputBuilder().setCustomId('eco_max').setLabel('Ganho Máximo').setStyle(TextInputStyle.Short).setValue(String(guildCfg.economy.maxWork)).setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(minInput), new ActionRowBuilder().addComponents(maxInput));
+      return await interaction.showModal(modal);
+    }
+
     if (interaction.customId === 'claim_ticket') {
       const embed = EmbedBuilder.from(interaction.message.embeds[0])
         .addFields({ name: '🛠️ Atendido por', value: `${interaction.user}`, inline: false });
@@ -347,7 +383,43 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- CRIAÇÃO DO TICKET PELO MENU ---
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'modal_ticket_embed') {
+      guildCfg.ticket.title = interaction.fields.getTextInputValue('embed_title');
+      guildCfg.ticket.description = interaction.fields.getTextInputValue('embed_desc');
+      dbConfig[guildId] = guildCfg;
+      saveData(CONFIG_FILE, dbConfig);
+      return await interaction.reply({ content: '✅ Embed atualizada com sucesso!', ephemeral: true });
+    }
+
+    if (interaction.customId === 'modal_eco_values') {
+      const min = parseInt(interaction.fields.getTextInputValue('eco_min'));
+      const max = parseInt(interaction.fields.getTextInputValue('eco_max'));
+      if (isNaN(min) || isNaN(max) || min >= max) {
+        return await interaction.reply({ content: '❌ Valores inválidos! O mínimo deve ser menor que o máximo.', ephemeral: true });
+      }
+      guildCfg.economy.minWork = min;
+      guildCfg.economy.maxWork = max;
+      dbConfig[guildId] = guildCfg;
+      saveData(CONFIG_FILE, dbConfig);
+      return await interaction.reply({ content: `✅ Valores de trabalho atualizados para **$${min} - $${max}**!`, ephemeral: true });
+    }
+  }
+
+  if (interaction.isRoleSelectMenu() && interaction.customId === 'select_role_staff') {
+    guildCfg.ticket.staffRoleId = interaction.values[0];
+    dbConfig[guildId] = guildCfg;
+    saveData(CONFIG_FILE, dbConfig);
+    return await interaction.update({ content: `✅ Cargo de staff definido para <@&${guildCfg.ticket.staffRoleId}>!`, components: [] });
+  }
+
+  if (interaction.isChannelSelectMenu() && interaction.customId === 'select_channel_target') {
+    guildCfg.ticket.targetChannelId = interaction.values[0];
+    dbConfig[guildId] = guildCfg;
+    saveData(CONFIG_FILE, dbConfig);
+    return await interaction.update({ content: `✅ Canal de envio definido para <#${guildCfg.ticket.targetChannelId}>!`, components: [] });
+  }
+
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
     const selectedValue = interaction.values[0];
     let categoryName = 'geral';
@@ -358,7 +430,7 @@ client.on('interactionCreate', async interaction => {
 
     const guild = interaction.guild;
     const member = interaction.member;
-    const staffRoleId = guildCfg.ticket?.staffRoleId || null;
+    const cfg = guildCfg.ticket;
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -369,7 +441,7 @@ client.on('interactionCreate', async interaction => {
         permissionOverwrites: [
           { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
           { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
-          ...(staffRoleId ? [{ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : []),
+          ...(cfg.staffRoleId ? [{ id: cfg.staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : []),
           { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }
         ],
       });
@@ -385,7 +457,7 @@ client.on('interactionCreate', async interaction => {
         new ButtonBuilder().setCustomId('close_ticket').setLabel('Fechar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
       );
 
-      const staffMention = staffRoleId ? `<@&${staffRoleId}>` : '*(Cargo não configurado)*';
+      const staffMention = cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '*(Cargo não configurado)*';
 
       await ticketChannel.send({ 
         content: `${member} | ${staffMention}`, 
