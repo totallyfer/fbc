@@ -1,4 +1,4 @@
- const { 
+const { 
   Client, 
   GatewayIntentBits, 
   EmbedBuilder, 
@@ -34,6 +34,7 @@ const client = new Client({
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const ECONOMY_FILE = path.join(__dirname, 'economy.json');
+const SETS_FILE = path.join(__dirname, 'sets.json');
 const PREFIX = '?';
 
 function loadData(file, defaultVal = {}) {
@@ -46,6 +47,62 @@ function loadData(file, defaultVal = {}) {
 function saveData(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
+
+// ==========================================
+// BASE DE DADOS DOS SETS (50 ITENS)
+// ==========================================
+const SETS = [
+  { id: 1, name: "Party Ballons", rarity: "Rara", image: "https://iili.io/CteYhKl.webp", emoji: "<:party:1541291120913420298>" },
+  { id: 2, name: "Lovesick", rarity: "Rara", image: "https://iili.io/CteYyfR.webp", emoji: "<:lovesick:1541291191591641118>" },
+  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: "https://iili.io/CteaLrl.webp", emoji: "<:gothic:1541291266351046686>" },
+  { id: 4, name: "Devlish", rarity: "Rara", image: "https://iili.io/CtelbWu.webp", emoji: "<:devlish:1541291335418384424>" },
+  { id: 5, name: "Spooky Brew", rarity: "Rara", image: "https://iili.io/Cte0o0v.png", emoji: "<:spooky:1541291409439588382>" },
+  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: "https://iili.io/CtecRYN.webp", emoji: "<:slice:1541291500766241000>" },
+  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: "https://iili.io/Cte0MeS.webp", emoji: "<:cherry:1541291578113527830>" },
+  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: "https://iili.io/Cte1A3x.webp", emoji: "<:sakura:1541291678453727322>" },
+  { id: 9, name: "Devilborn", rarity: "Rara", image: "https://iili.io/CteGfz7.webp", emoji: "<:devilborn:1541291743553781770>" },
+  { id: 10, name: "Dark Mansion", rarity: "Rara", image: "https://iili.io/CtehbX2.webp", emoji: "<:darkmansion:1541291813061529650>" },
+  { id: 11, name: "Phantom Light", rarity: "Rara", image: "https://iili.io/Ctej7Xp.webp", emoji: "<:phantom:1541291876886253660>" },
+  { id: 12, name: "Dark Bones", rarity: "Rara", image: "https://iili.io/CteE4fa.webp", emoji: "<:darkbones:1541291944997687316>" },
+  { id: 13, name: "Classic", rarity: "Rara", image: "https://iili.io/Cte1ZMu.webp", emoji: "<:classic:1541292008369430678>" },
+  { id: 14, name: "Ice Cream", rarity: "Rara", image: "https://iili.io/CtecPu1.webp", emoji: "<:icecream:1541292090229792859>" },
+  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: "https://iili.io/Cte0vdQ.webp", emoji: "<:pegasus:1541292159100264458>" },
+  { id: 16, name: "Marine Anchor", rarity: "Épica", image: "https://iili.io/CteM9Q1.webp", emoji: "<:marine:1541292244022333511>" },
+  { id: 17, name: "Phosphoros", rarity: "Épica", image: "https://iili.io/Cte19Qn.webp", emoji: "<:phosphoros:1541292317892153384>" },
+  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: "https://iili.io/CteE0R2.webp", emoji: "<:psycho:1541292394782396497>" },
+  { id: 19, name: "Egg Basket", rarity: "Épica", image: "https://iili.io/CteVaUJ.webp", emoji: "<:eggbasket:1541292468505419776>" },
+  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: "https://iili.io/CteVUW7.webp", emoji: "<:bloodthisrt:1541292557613531156>" },
+  { id: 21, name: "Paranormal", rarity: "Épica", image: "https://iili.io/CteWBst.webp", emoji: "<:paranormal:1541292608700162068>" },
+  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: "https://iili.io/CteXJC7.png", emoji: "<:pot:1541292680737329292>" },
+  { id: 23, name: "Acidic Potion", rarity: "Épica", image: "https://iili.io/CtehwUg.webp", emoji: "<:acidic:1541292726094532628>" },
+  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: "https://iili.io/CteG4h7.png", emoji: "<:dragon:1541292800476446750>" },
+  { id: 25, name: "Spring World", rarity: "Épica", image: "https://iili.io/CteVKPe.png", emoji: "<:spring:1541292863168712745>" },
+  { id: 26, name: "Piñata", rarity: "Épica", image: "https://iili.io/CtehqKX.png", emoji: "<:pinata:1541315683978059857>" },
+  { id: 27, name: "Light Bone", rarity: "Épica", image: "https://iili.io/CtewPAG.png", emoji: "<:lightbone:1541315779205529610>" },
+  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: "https://iili.io/CtekCU7.webp", emoji: "<:witch:1541315874630279178>" },
+  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: "https://iili.io/CteeiNa.webp", emoji: "<:warlock:1541315957824294942>" },
+  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: "https://iili.io/Cteej9e.webp", emoji: "<:alchemist:1541316034835779682>" },
+  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: "https://iili.io/Cte8Ots.webp", emoji: "<:bubbly:1541316124799402055>" },
+  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: "https://iili.io/CteMoQt.webp", emoji: "<:strawberry:1541316217888055309>" },
+  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: "https://iili.io/CteMiwN.webp", emoji: "<:lemon:1541316295839187034>" },
+  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: "https://iili.io/CteMOZP.webp", emoji: "<:blueberry:1541316372913455184>" },
+  { id: 35, name: "Coffin", rarity: "Lendária", image: "https://iili.io/CteO0rP.webp", emoji: "<:conffin:1541316444296314941>" },
+  { id: 36, name: "Thombstone", rarity: "Lendária", image: "https://iili.io/CteNSzx.webp", emoji: "<:thombstone:1541316521161400482>" },
+  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: "https://iili.io/CteUFp9.webp", emoji: "<:ancestral:1541316829795065977>" },
+  { id: 38, name: "Mothership", rarity: "Lendária", image: "https://iili.io/CteZJoB.webp", emoji: "<:mothership:1541316925760475218>" },
+  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: "https://iili.io/CtesNNp.webp", emoji: "<:mystical:1541317023357866014>" },
+  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: "https://iili.io/CteU6Zu.webp", emoji: "<:ancient:1541317154018828390>" },
+  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: "https://iili.io/CteDLPI.webp", emoji: "<:chocodip:1541317198524579891>" },
+  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: "https://iili.io/CtebQzx.webp", emoji: "<:psychoaxe:1541317298281910323>" },
+  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: "https://iili.io/CtemhBV.webp", emoji: "<:watergun:1541317387226447953>" },
+  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: "https://iili.io/Ctepd37.png", emoji: "<:lemonedjar:1541317469237547058>" },
+  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: "https://iili.io/CtepoGV.webp", emoji: "<:uberol:1541317587219120209>" },
+  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: "https://iili.io/Ctep5ua.png", emoji: "<:redpanda:1541317690491404460>" },
+  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: "https://iili.io/Ctepjtf.webp", emoji: "<:sourcandy:1541317629447241818>" },
+  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: "https://iili.io/CteydVR.png", emoji: "<:bluestar:1541317784829431910>" },
+  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: "https://iili.io/CteynNs.png", emoji: "<:pinkstar:1541317871945121842>" },
+  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: "https://iili.io/Ctey6Jt.webp", emoji: "<:bleakink:1541317970314133606>" }
+];
 
 const commands = [
   new SlashCommandBuilder()
@@ -101,7 +158,16 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Mostra o ranking visual de moedas da cidade.')
+    .setDescription('Mostra o ranking visual de moedas da cidade.'),
+
+  new SlashCommandBuilder()
+    .setName('set')
+    .setDescription('Sorteie um set de Flee the Facility!'),
+
+  new SlashCommandBuilder()
+    .setName('inventario')
+    .setDescription('Visualiza o inventário de sets de um usuário.')
+    .addUserOption(opt => opt.setName('usuario').setDescription('Membro para ver o inventário').setRequired(false))
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -159,8 +225,17 @@ function getUserEco(dbEco, guildId, userId) {
   return dbEco[guildId][userId];
 }
 
+function getUserSets(guildId, userId) {
+  let dbSets = loadData(SETS_FILE, {});
+  if (!dbSets[guildId]) dbSets[guildId] = {};
+  if (!dbSets[guildId][userId]) {
+    dbSets[guildId][userId] = { pending: null, cooldown: 0, inventory: {} };
+  }
+  return dbSets[guildId][userId];
+}
+
 // ==========================================
-// FUNÇÕES COMPARTILHADAS
+// FUNÇÕES COMPARTILHADAS (ECONOMIA / TICKET / SETS)
 // ==========================================
 
 async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
@@ -171,7 +246,7 @@ async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
   if (Date.now() - eco.lastWork < cooldown) {
     const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
     const content = `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.`;
-    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content }) : await messageOrInteraction.channel.send(content);
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content, ephemeral: true }) : await messageOrInteraction.channel.send(content);
   }
 
   const trabalhos = [
@@ -232,6 +307,192 @@ async function handleSaldo(messageOrInteraction, targetUser, guildId) {
     return await messageOrInteraction.reply({ embeds: [embed] });
   } else {
     return await messageOrInteraction.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleSetCommand(messageOrInteraction, user, guildId) {
+  let dbSets = loadData(SETS_FILE, {});
+  const userSetData = getUserSets(guildId, user.id);
+  const cooldownTime = 10 * 60 * 1000; // 10 minutos
+  const now = Date.now();
+
+  if (now - userSetData.cooldown < cooldownTime) {
+    const timeLeft = Math.ceil((cooldownTime - (now - userSetData.cooldown)) / 1000);
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    const msg = `⏳ Você precisa esperar **${mins}m ${secs}s** para sortear um set novamente.`;
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg, ephemeral: true }) : await messageOrInteraction.channel.send(msg);
+  }
+
+  // Sorteio de raridade baseada nas suas regras originais
+  const randomChance = Math.floor(Math.random() * 100) + 1;
+  let selectedRarity = 'Rara';
+  if (randomChance >= 61 && randomChance < 86) selectedRarity = 'Épica';
+  else if (randomChance >= 86 && randomChance < 96) selectedRarity = 'Lendária';
+  else if (randomChance >= 96) selectedRarity = 'Lendária de Robux';
+
+  const filteredSets = SETS.filter(s => s.rarity === selectedRarity);
+  const pendingSet = filteredSets[Math.floor(Math.random() * filteredSets.length)];
+
+  userSetData.pending = pendingSet.id;
+  userSetData.cooldown = now;
+  dbSets[guildId][user.id] = userSetData;
+  saveData(SETS_FILE, dbSets);
+
+  const embed = new EmbedBuilder()
+    .setColor('#2196F3')
+    .setTitle('🎉 Você ganhou um Set!')
+    .setDescription(`## ${pendingSet.name}\n\nClique no botão abaixo para resgatar seu set para o seu inventário!`)
+    .setImage(pendingSet.image);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`claim_set_${pendingSet.id}`)
+      .setLabel('Resgatar Set')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('🎁')
+  );
+
+  if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply({ embeds: [embed], components: [row] });
+  } else {
+    return await messageOrInteraction.channel.send({ embeds: [embed], components: [row] });
+  }
+}
+
+async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
+  let dbSets = loadData(SETS_FILE, {});
+  const userSetData = (dbSets[guildId] && dbSets[guildId][targetUser.id]) ? dbSets[guildId][targetUser.id] : { inventory: {} };
+  const userInventory = userSetData.inventory || {};
+
+  // Filtrar sets possuídos
+  const userOwnedSets = SETS.filter(s => (userInventory[s.id] || 0) > 0);
+  const filteredSets = activeCategory === 'Todas' 
+    ? userOwnedSets 
+    : userOwnedSets.filter(s => s.rarity === activeCategory);
+
+  // Gerar Canvas Estilo Azul
+  const canvas = createCanvas(1000, 500);
+  const ctx = canvas.getContext('2d');
+
+  const gradient = ctx.createLinearGradient(0, 0, 1000, 500);
+  gradient.addColorStop(0, '#0a192f');
+  gradient.addColorStop(1, '#004080');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1000, 500);
+
+  // Avatar do Usuário
+  try {
+    const avatarURL = targetUser.displayAvatarURL({ extension: 'png', size: 256 });
+    const avatarImg = await loadImage(avatarURL);
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(100, 100, 60, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, 40, 40, 120, 120);
+    ctx.restore();
+
+    ctx.strokeStyle = '#2196F3';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(100, 100, 60, 0, Math.PI * 2, true);
+    ctx.stroke();
+  } catch (err) {}
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.fillText(targetUser.username, 180, 90);
+
+  ctx.fillStyle = '#2196F3';
+  ctx.font = '20px sans-serif';
+  ctx.fillText(`Categoria: ${activeCategory} (${filteredSets.length} Sets)`, 180, 125);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(40, 180);
+  ctx.lineTo(960, 180);
+  ctx.stroke();
+
+  // Grade de Miniaturas
+  const startX = 50;
+  const startY = 200;
+  const boxSize = 80;
+  const gap = 20;
+  const maxCols = 8;
+
+  for (let i = 0; i < Math.min(filteredSets.length, 24); i++) {
+    const setItem = filteredSets[i];
+    const col = i % maxCols;
+    const row = Math.floor(i / maxCols);
+    const x = startX + col * (boxSize + gap);
+    const y = startY + row * (boxSize + gap);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = '#2196F3';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, boxSize, boxSize, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    try {
+      const setImg = await loadImage(setItem.image);
+      ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
+    } catch (e) {}
+
+    const count = userInventory[setItem.id];
+    ctx.fillStyle = '#2196F3';
+    ctx.beginPath();
+    ctx.arc(x + boxSize - 12, y + 12, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${count}`, x + boxSize - 12, y + 16);
+    ctx.textAlign = 'left';
+  }
+
+  const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'inventario.png' });
+
+  let descText = `📦 **Inventário de <@${targetUser.id}>**\n\n`;
+  if (filteredSets.length === 0) {
+    descText += `*Nenhum set encontrado na categoria **${activeCategory}**.*`;
+  } else {
+    filteredSets.forEach(setItem => {
+      const qty = userInventory[setItem.id];
+      descText += `${setItem.emoji} **${setItem.name}**: ${qty}x\n`;
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor('#2196F3')
+    .setDescription(descText)
+    .setImage('attachment://inventario.png');
+
+  const categories = ['Todas', 'Rara', 'Épica', 'Lendária', 'Lendária de Robux'];
+  const row = new ActionRowBuilder();
+
+  categories.forEach(cat => {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`inv_cat_${targetUser.id}_${cat}`)
+        .setLabel(cat)
+        .setStyle(activeCategory === cat ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+  });
+
+  const replyData = { embeds: [embed], files: [attachment], components: [row] };
+
+  if (isUpdate) {
+    return await messageOrInteraction.update(replyData);
+  } else if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply(replyData);
+  } else {
+    return await messageOrInteraction.channel.send(replyData);
   }
 }
 
@@ -430,6 +691,15 @@ client.on('messageCreate', async message => {
     await handleLeaderboard(message, message.guild);
   }
 
+  if (command === 'set') {
+    await handleSetCommand(message, message.author, guildId);
+  }
+
+  if (command === 'inventario') {
+    const target = message.mentions.users.first() || message.author;
+    await handleInventory(message, target, guildId, 'Todas', false);
+  }
+
   if (command === 'lf') {
     if (subCommand === 'legit') {
       await handleLF(message, 'legit', guildCfg);
@@ -440,7 +710,7 @@ client.on('messageCreate', async message => {
 });
 
 // ==========================================
-// EVENTO DE INTERAÇÕES (SLASH COMMANDS)
+// EVENTO DE INTERAÇÕES (SLASH COMMANDS & BOTÕES)
 // ==========================================
 
 client.on('interactionCreate', async interaction => {
@@ -479,9 +749,7 @@ client.on('interactionCreate', async interaction => {
             const imgPath = path.join(uploadsDir, `${guildId}-ticket-img-${Date.now()}.png`);
             fs.writeFileSync(imgPath, bufImg);
             guildCfg.ticket.image = imgPath;
-          } catch (e) {
-            console.error('Erro ao salvar imagem do ticket:', e);
-          }
+          } catch (e) {}
         }
 
         if (miniaturaArquivo) {
@@ -491,9 +759,7 @@ client.on('interactionCreate', async interaction => {
             const thumbPath = path.join(uploadsDir, `${guildId}-ticket-thumb-${Date.now()}.png`);
             fs.writeFileSync(thumbPath, bufThumb);
             guildCfg.ticket.thumbnail = thumbPath;
-          } catch (e) {
-            console.error('Erro ao salvar miniatura do ticket:', e);
-          }
+          } catch (e) {}
         }
 
         dbConfig[guildId] = guildCfg;
@@ -506,8 +772,7 @@ client.on('interactionCreate', async interaction => {
             { name: '📌 Título', value: `\`${guildCfg.ticket.title}\``, inline: false },
             { name: '📝 Descrição', value: `\`${guildCfg.ticket.description}\``, inline: false },
             { name: '🛡️ Cargo Staff', value: guildCfg.ticket.staffRoleId ? `<@&${guildCfg.ticket.staffRoleId}>` : '❌ Não definido', inline: true },
-            { name: '📢 Canal de Envio', value: guildCfg.ticket.targetChannelId ? `<#${guildCfg.ticket.targetChannelId}>` : '❌ Não definido', inline: true },
-            { name: '🖼️ Imagem / Miniatura', value: 'Atualizadas com sucesso!', inline: true }
+            { name: '📢 Canal de Envio', value: guildCfg.ticket.targetChannelId ? `<#${guildCfg.ticket.targetChannelId}>` : '❌ Não definido', inline: true }
           );
 
         const rowLaunch = new ActionRowBuilder().addComponents(
@@ -546,12 +811,8 @@ client.on('interactionCreate', async interaction => {
           interaction.options.getRole('cargo4')
         ].filter(Boolean);
 
-        if (!guildCfg.comp) {
-          guildCfg.comp = { legit: {}, esp: {} };
-        }
-        if (!guildCfg.comp[tipo]) {
-          guildCfg.comp[tipo] = {};
-        }
+        if (!guildCfg.comp) guildCfg.comp = { legit: {}, esp: {} };
+        if (!guildCfg.comp[tipo]) guildCfg.comp[tipo] = {};
 
         if (titulo) guildCfg.comp[tipo].title = titulo;
         if (descricao) guildCfg.comp[tipo].description = descricao;
@@ -559,35 +820,23 @@ client.on('interactionCreate', async interaction => {
         if (imagemArquivo) {
           const uploadsDir = path.join(__dirname, 'uploads');
           if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-          
           const filePath = path.join(uploadsDir, `${guildId}-${tipo}-${Date.now()}.png`);
-          
           try {
             const response = await fetch(imagemArquivo.url);
             const buffer = Buffer.from(await response.arrayBuffer());
             fs.writeFileSync(filePath, buffer);
             guildCfg.comp[tipo].image = filePath;
-          } catch (err) {
-            console.error('Erro ao baixar imagem:', err);
-          }
+          } catch (err) {}
         }
 
-        if (cargos.length > 0) {
-          guildCfg.comp[tipo].roles = cargos.map(c => c.id);
-        }
+        if (cargos.length > 0) guildCfg.comp[tipo].roles = cargos.map(c => c.id);
 
         dbConfig[guildId] = guildCfg;
         saveData(CONFIG_FILE, dbConfig);
 
         const embed = new EmbedBuilder()
           .setColor('#57F287')
-          .setTitle(`✅ Configuração do ?lf ${tipo.toUpperCase()} Atualizada!`)
-          .addFields(
-            { name: '📌 Título Atual', value: guildCfg.comp[tipo].title || 'Padrão', inline: false },
-            { name: '📝 Descrição', value: guildCfg.comp[tipo].description || 'Padrão', inline: false },
-            { name: '🖼️ Imagem', value: imagemArquivo ? 'Imagem carregada com sucesso!' : 'Mantida anterior', inline: true },
-            { name: '👥 Cargos Marcados', value: guildCfg.comp[tipo].roles?.length > 0 ? guildCfg.comp[tipo].roles.map(r => `<@&${r}>`).join(', ') : 'Nenhum', inline: true }
-          );
+          .setTitle(`✅ Configuração do ?lf ${tipo.toUpperCase()} Atualizada!`);
 
         return await interaction.reply({ embeds: [embed], ephemeral: true });
       }
@@ -628,10 +877,60 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'leaderboard') {
       await handleLeaderboard(interaction, interaction.guild);
     }
+
+    if (commandName === 'set') {
+      await handleSetCommand(interaction, interaction.user, guildId);
+    }
+
+    if (commandName === 'inventario') {
+      const target = interaction.options.getUser('usuario') || interaction.user;
+      await handleInventory(interaction, target, guildId, 'Todas', false);
+    }
   }
 
-  // --- BOTÕES E CONFIGURAÇÕES DE TICKET ---
+  // --- BOTÕES E INTERAÇÕES ---
   if (interaction.isButton()) {
+    // Resgatar Set
+    if (interaction.customId.startsWith('claim_set_')) {
+      const setId = parseInt(interaction.customId.split('_')[2]);
+      let dbSets = loadData(SETS_FILE, {});
+      const userSetData = getUserSets(guildId, interaction.user.id);
+
+      if (!userSetData.pending || userSetData.pending !== setId) {
+        return interaction.reply({ content: '❌ Este set não está disponível para resgate por você!', ephemeral: true });
+      }
+
+      if (!userSetData.inventory[setId]) userSetData.inventory[setId] = 0;
+      userSetData.inventory[setId] += 1;
+      userSetData.pending = null;
+      dbSets[guildId][interaction.user.id] = userSetData;
+      saveData(SETS_FILE, dbSets);
+
+      const claimedSet = SETS.find(s => s.id === setId);
+
+      const disabledRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('claimed').setLabel('🎁 Set Resgatado').setStyle(ButtonStyle.Secondary).setDisabled(true)
+      );
+
+      const embed = new EmbedBuilder()
+        .setColor('#2196F3')
+        .setTitle('<:ff:1541308305719304192> Set Resgatado!')
+        .setDescription(`O set **${claimedSet.name}** foi adicionado ao seu inventário!\n\n**Use ?inventario ou /inventario para visualizar seu inv**`)
+        .setThumbnail(claimedSet.image);
+
+      return await interaction.update({ embeds: [embed], components: [disabledRow] });
+    }
+
+    // Navegar Categorias do Inventário
+    if (interaction.customId.startsWith('inv_cat_')) {
+      const [, , targetId, category] = interaction.customId.split('_');
+      if (interaction.user.id !== targetId) {
+        return interaction.reply({ content: '❌ Você não pode alterar a visualização do inventário de outra pessoa.', ephemeral: true });
+      }
+      const targetUser = await client.users.fetch(targetId);
+      return await handleInventory(interaction, targetUser, guildId, category, true);
+    }
+
     if (interaction.customId === 'cfg_ticket_enviar') {
       const cfg = guildCfg.ticket;
       if (!cfg.targetChannelId) return await interaction.reply({ content: '❌ Defina um canal de envio primeiro usando `/config ticket`!', ephemeral: true });
@@ -647,16 +946,12 @@ client.on('interactionCreate', async interaction => {
         .setFooter({ text: 'Sistema de Tickets', iconURL: interaction.guild.iconURL() });
 
       let filesArray = [];
-
       if (cfg.image && fs.existsSync(cfg.image)) {
-        const attImg = new AttachmentBuilder(cfg.image, { name: 'ticket-banner.png' });
-        filesArray.push(attImg);
+        filesArray.push(new AttachmentBuilder(cfg.image, { name: 'ticket-banner.png' }));
         ticketEmbed.setImage('attachment://ticket-banner.png');
       }
-
       if (cfg.thumbnail && fs.existsSync(cfg.thumbnail)) {
-        const attThumb = new AttachmentBuilder(cfg.thumbnail, { name: 'ticket-thumb.png' });
-        filesArray.push(attThumb);
+        filesArray.push(new AttachmentBuilder(cfg.thumbnail, { name: 'ticket-thumb.png' }));
         ticketEmbed.setThumbnail('attachment://ticket-thumb.png');
       }
 
@@ -695,19 +990,17 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  if (interaction.isModalSubmit()) {
-    if (interaction.customId === 'modal_eco_values') {
-      const min = parseInt(interaction.fields.getTextInputValue('eco_min'));
-      const max = parseInt(interaction.fields.getTextInputValue('eco_max'));
-      if (isNaN(min) || isNaN(max) || min >= max) {
-        return await interaction.reply({ content: '❌ Valores inválidos! O mínimo deve ser menor que o máximo.', ephemeral: true });
-      }
-      guildCfg.economy.minWork = min;
-      guildCfg.economy.maxWork = max;
-      dbConfig[guildId] = guildCfg;
-      saveData(CONFIG_FILE, dbConfig);
-      return await interaction.reply({ content: `✅ Valores de trabalho atualizados para **$${min} - $${max}**!`, ephemeral: true });
+  if (interaction.isModalSubmit() && interaction.customId === 'modal_eco_values') {
+    const min = parseInt(interaction.fields.getTextInputValue('eco_min'));
+    const max = parseInt(interaction.fields.getTextInputValue('eco_max'));
+    if (isNaN(min) || isNaN(max) || min >= max) {
+      return await interaction.reply({ content: '❌ Valores inválidos! O mínimo deve ser menor que o máximo.', ephemeral: true });
     }
+    guildCfg.economy.minWork = min;
+    guildCfg.economy.maxWork = max;
+    dbConfig[guildId] = guildCfg;
+    saveData(CONFIG_FILE, dbConfig);
+    return await interaction.reply({ content: `✅ Valores de trabalho atualizados para **$${min} - $${max}**!`, ephemeral: true });
   }
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
