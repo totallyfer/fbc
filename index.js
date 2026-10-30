@@ -67,59 +67,59 @@ function saveData(file, data) {
 }
 
 // ==========================================
-// BASE DE DADOS DOS SETS (50 ITENS)
+// BASE DE DADOS DOS SETS (50 ITENS - SEM EMOJIS PERSONALIZADOS)
 // ==========================================
 const SETS = [
-  { id: 1, name: "Party Ballons", rarity: "Rara", image: "https://iili.io/CteYhKl.webp", emoji: "<:party:1541291120913420298>" },
-  { id: 2, name: "Lovesick", rarity: "Rara", image: "https://iili.io/CteYyfR.webp", emoji: "<:lovesick:1541291191591641118>" },
-  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: "https://iili.io/CteaLrl.webp", emoji: "<:gothic:1541291266351046686>" },
-  { id: 4, name: "Devlish", rarity: "Rara", image: "https://iili.io/CtelbWu.webp", emoji: "<:devlish:1541291335418384424>" },
-  { id: 5, name: "Spooky Brew", rarity: "Rara", image: "https://iili.io/Cte0o0v.png", emoji: "<:spooky:1541291409439588382>" },
-  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: "https://iili.io/CtecRYN.webp", emoji: "<:slice:1541291500766241000>" },
-  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: "https://iili.io/Cte0MeS.webp", emoji: "<:cherry:1541291578113527830>" },
-  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: "https://iili.io/Cte1A3x.webp", emoji: "<:sakura:1541291678453727322>" },
-  { id: 9, name: "Devilborn", rarity: "Rara", image: "https://iili.io/CteGfz7.webp", emoji: "<:devilborn:1541291743553781770>" },
-  { id: 10, name: "Dark Mansion", rarity: "Rara", image: "https://iili.io/CtehbX2.webp", emoji: "<:darkmansion:1541291813061529650>" },
-  { id: 11, name: "Phantom Light", rarity: "Rara", image: "https://iili.io/Ctej7Xp.webp", emoji: "<:phantom:1541291876886253660>" },
-  { id: 12, name: "Dark Bones", rarity: "Rara", image: "https://iili.io/CteE4fa.webp", emoji: "<:darkbones:1541291944997687316>" },
-  { id: 13, name: "Classic", rarity: "Rara", image: "https://iili.io/Cte1ZMu.webp", emoji: "<:classic:1541292008369430678>" },
-  { id: 14, name: "Ice Cream", rarity: "Rara", image: "https://iili.io/CtecPu1.webp", emoji: "<:icecream:1541292090229792859>" },
-  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: "https://iili.io/Cte0vdQ.webp", emoji: "<:pegasus:1541292159100264458>" },
-  { id: 16, name: "Marine Anchor", rarity: "Épica", image: "https://iili.io/CteM9Q1.webp", emoji: "<:marine:1541292244022333511>" },
-  { id: 17, name: "Phosphoros", rarity: "Épica", image: "https://iili.io/Cte19Qn.webp", emoji: "<:phosphoros:1541292317892153384>" },
-  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: "https://iili.io/CteE0R2.webp", emoji: "<:psycho:1541292394782396497>" },
-  { id: 19, name: "Egg Basket", rarity: "Épica", image: "https://iili.io/CteVaUJ.webp", emoji: "<:eggbasket:1541292468505419776>" },
-  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: "https://iili.io/CteVUW7.webp", emoji: "<:bloodthisrt:1541292557613531156>" },
-  { id: 21, name: "Paranormal", rarity: "Épica", image: "https://iili.io/CteWBst.webp", emoji: "<:paranormal:1541292608700162068>" },
-  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: "https://iili.io/CteXJC7.png", emoji: "<:pot:1541292680737329292>" },
-  { id: 23, name: "Acidic Potion", rarity: "Épica", image: "https://iili.io/CtehwUg.webp", emoji: "<:acidic:1541292726094532628>" },
-  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: "https://iili.io/CteG4h7.png", emoji: "<:dragon:1541292800476446750>" },
-  { id: 25, name: "Spring World", rarity: "Épica", image: "https://iili.io/CteVKPe.png", emoji: "<:spring:1541292863168712745>" },
-  { id: 26, name: "Piñata", rarity: "Épica", image: "https://iili.io/CtehqKX.png", emoji: "<:pinata:1541315683978059857>" },
-  { id: 27, name: "Light Bone", rarity: "Épica", image: "https://iili.io/CtewPAG.png", emoji: "<:lightbone:1541315779205529610>" },
-  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: "https://iili.io/CtekCU7.webp", emoji: "<:witch:1541315874630279178>" },
-  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: "https://iili.io/CteeiNa.webp", emoji: "<:warlock:1541315957824294942>" },
-  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: "https://iili.io/Cteej9e.webp", emoji: "<:alchemist:1541316034835779682>" },
-  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: "https://iili.io/Cte8Ots.webp", emoji: "<:bubbly:1541316124799402055>" },
-  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: "https://iili.io/CteMoQt.webp", emoji: "<:strawberry:1541316217888055309>" },
-  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: "https://iili.io/CteMiwN.webp", emoji: "<:lemon:1541316295839187034>" },
-  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: "https://iili.io/CteMOZP.webp", emoji: "<:blueberry:1541316372913455184>" },
-  { id: 35, name: "Coffin", rarity: "Lendária", image: "https://iili.io/CteO0rP.webp", emoji: "<:conffin:1541316444296314941>" },
-  { id: 36, name: "Thombstone", rarity: "Lendária", image: "https://iili.io/CteNSzx.webp", emoji: "<:thombstone:1541316521161400482>" },
-  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: "https://iili.io/CteUFp9.webp", emoji: "<:ancestral:1541316829795065977>" },
-  { id: 38, name: "Mothership", rarity: "Lendária", image: "https://iili.io/CteZJoB.webp", emoji: "<:mothership:1541316925760475218>" },
-  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: "https://iili.io/CtesNNp.webp", emoji: "<:mystical:1541317023357866014>" },
-  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: "https://iili.io/CteU6Zu.webp", emoji: "<:ancient:1541317154018828390>" },
-  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: "https://iili.io/CteDLPI.webp", emoji: "<:chocodip:1541317198524579891>" },
-  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: "https://iili.io/CtebQzx.webp", emoji: "<:psychoaxe:1541317298281910323>" },
-  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: "https://iili.io/CtemhBV.webp", emoji: "<:watergun:1541317387226447953>" },
-  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: "https://iili.io/Ctepd37.png", emoji: "<:lemonedjar:1541317469237547058>" },
-  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: "https://iili.io/CtepoGV.webp", emoji: "<:uberol:1541317587219120209>" },
-  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: "https://iili.io/Ctep5ua.png", emoji: "<:redpanda:1541317690491404460>" },
-  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: "https://iili.io/Ctepjtf.webp", emoji: "<:sourcandy:1541317629447241818>" },
-  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: "https://iili.io/CteydVR.png", emoji: "<:bluestar:1541317784829431910>" },
-  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: "https://iili.io/CteynNs.png", emoji: "<:pinkstar:1541317871945121842>" },
-  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: "https://iili.io/Ctey6Jt.webp", emoji: "<:bleakink:1541317970314133606>" }
+  { id: 1, name: "Party Ballons", rarity: "Rara", image: "https://iili.io/CteYhKl.webp" },
+  { id: 2, name: "Lovesick", rarity: "Rara", image: "https://iili.io/CteYyfR.webp" },
+  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: "https://iili.io/CteaLrl.webp" },
+  { id: 4, name: "Devlish", rarity: "Rara", image: "https://iili.io/CtelbWu.webp" },
+  { id: 5, name: "Spooky Brew", rarity: "Rara", image: "https://iili.io/Cte0o0v.png" },
+  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: "https://iili.io/CtecRYN.webp" },
+  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: "https://iili.io/Cte0MeS.webp" },
+  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: "https://iili.io/Cte1A3x.webp" },
+  { id: 9, name: "Devilborn", rarity: "Rara", image: "https://iili.io/CteGfz7.webp" },
+  { id: 10, name: "Dark Mansion", rarity: "Rara", image: "https://iili.io/CtehbX2.webp" },
+  { id: 11, name: "Phantom Light", rarity: "Rara", image: "https://iili.io/Ctej7Xp.webp" },
+  { id: 12, name: "Dark Bones", rarity: "Rara", image: "https://iili.io/CteE4fa.webp" },
+  { id: 13, name: "Classic", rarity: "Rara", image: "https://iili.io/Cte1ZMu.webp" },
+  { id: 14, name: "Ice Cream", rarity: "Rara", image: "https://iili.io/CtecPu1.webp" },
+  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: "https://iili.io/Cte0vdQ.webp" },
+  { id: 16, name: "Marine Anchor", rarity: "Épica", image: "https://iili.io/CteM9Q1.webp" },
+  { id: 17, name: "Phosphoros", rarity: "Épica", image: "https://iili.io/Cte19Qn.webp" },
+  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: "https://iili.io/CteE0R2.webp" },
+  { id: 19, name: "Egg Basket", rarity: "Épica", image: "https://iili.io/CteVaUJ.webp" },
+  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: "https://iili.io/CteVUW7.webp" },
+  { id: 21, name: "Paranormal", rarity: "Épica", image: "https://iili.io/CteWBst.webp" },
+  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: "https://iili.io/CteXJC7.png" },
+  { id: 23, name: "Acidic Potion", rarity: "Épica", image: "https://iili.io/CtehwUg.webp" },
+  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: "https://iili.io/CteG4h7.png" },
+  { id: 25, name: "Spring World", rarity: "Épica", image: "https://iili.io/CteVKPe.png" },
+  { id: 26, name: "Piñata", rarity: "Épica", image: "https://iili.io/CtehqKX.png" },
+  { id: 27, name: "Light Bone", rarity: "Épica", image: "https://iili.io/CtewPAG.png" },
+  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: "https://iili.io/CtekCU7.webp" },
+  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: "https://iili.io/CteeiNa.webp" },
+  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: "https://iili.io/Cteej9e.webp" },
+  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: "https://iili.io/Cte8Ots.webp" },
+  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: "https://iili.io/CteMoQt.webp" },
+  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: "https://iili.io/CteMiwN.webp" },
+  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: "https://iili.io/CteMOZP.webp" },
+  { id: 35, name: "Coffin", rarity: "Lendária", image: "https://iili.io/CteO0rP.webp" },
+  { id: 36, name: "Thombstone", rarity: "Lendária", image: "https://iili.io/CteNSzx.webp" },
+  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: "https://iili.io/CteUFp9.webp" },
+  { id: 38, name: "Mothership", rarity: "Lendária", image: "https://iili.io/CteZJoB.webp" },
+  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: "https://iili.io/CtesNNp.webp" },
+  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: "https://iili.io/CteU6Zu.webp" },
+  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: "https://iili.io/CteDLPI.webp" },
+  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: "https://iili.io/CtebQzx.webp" },
+  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: "https://iili.io/CtemhBV.webp" },
+  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: "https://iili.io/Ctepd37.png" },
+  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: "https://iili.io/CtepoGV.webp" },
+  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: "https://iili.io/Ctep5ua.png" },
+  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: "https://iili.io/Ctepjtf.webp" },
+  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: "https://iili.io/CteydVR.png" },
+  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: "https://iili.io/CteynNs.png" },
+  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: "https://iili.io/Ctey6Jt.webp" }
 ];
 
 const commands = [
@@ -487,7 +487,7 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
   } else {
     filteredSets.forEach(setItem => {
       const qty = userInventory[setItem.id];
-      descText += `${setItem.emoji} **${setItem.name}**: ${qty}x\n`;
+      descText += `• **${setItem.name}**: ${qty}x\n`;
     });
   }
 
@@ -936,7 +936,7 @@ client.on('interactionCreate', async interaction => {
 
       const embed = new EmbedBuilder()
         .setColor('#2196F3')
-        .setTitle('<:ff:1541308305719304192> Set Resgatado!')
+        .setTitle('Set Resgatado!')
         .setDescription(`O set **${claimedSet.name}** foi adicionado ao seu inventário!\n\n**Use ?inventario ou /inventario para visualizar seu inv**`)
         .setThumbnail(claimedSet.image);
 
@@ -1089,4 +1089,4 @@ server.listen(PORT, () => {
   console.log(`🌐 Servidor HTTP ativo na porta ${PORT}`);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISOURCE_TOKEN || process.env.DISCORD_TOKEN);
