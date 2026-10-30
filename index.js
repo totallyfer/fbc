@@ -71,7 +71,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Mostra o ranking visual dos mais ricos da cidade.')
+    .setDescription('Mostra o ranking visual de moedas da cidade.')
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -171,10 +171,10 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setColor('#2b2d31')
         .setAuthor({ name: `Extrato Bancário • ${target.username}`, iconURL: target.displayAvatarURL() })
-        .setDescription(`Aqui estão os detalhes financeiros da conta de ${target}.`)
+        .setDescription(`Detalhes financeiros da conta de ${target}.`)
         .addFields(
-          { name: '💵 Dinheiro na Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
-          { name: '🏦 Dinheiro no Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
+          { name: '💵 Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
+          { name: '🏦 Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
           { name: '💎 Patrimônio Total', value: `\`$${total.toLocaleString()}\``, inline: false }
         )
         .setThumbnail(target.displayAvatarURL({ size: 256 }))
@@ -186,19 +186,18 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'trabalhar') {
       const eco = getUserEco(dbEco, guildId, interaction.user.id);
-      const cooldown = 30000; // 30 segundos
+      const cooldown = 30000;
       if (Date.now() - eco.lastWork < cooldown) {
         const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
-        return await interaction.reply({ content: `⏳ Você está descansando do último turno! Volte a trabalhar em **${timeLeft} segundos**.` });
+        return await interaction.reply({ content: `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.` });
       }
 
       const trabalhos = [
-        { cargo: 'Programador de Jogos', msg: 'criou um novo sistema para o Roblox' },
-        { cargo: 'Policial da Cidade', msg: 'patrulhou as ruas e manteve a ordem' },
-        { cargo: 'Entregador de Pizza', msg: 'fez entregas rápidas pela cidade' },
-        { cargo: 'Cozinheiro Chefe', msg: 'preparou pratos deliciosos no restaurante local' },
-        { cargo: 'Mecânico', msg: 'consertou carros esportivos na oficina' },
-        { cargo: 'Arquiteto', msg: 'projetou novas mansões luxuosas' }
+        { cargo: 'Programador', msg: 'criou scripts incríveis' },
+        { cargo: 'Policial', msg: 'patrulhou as ruas da cidade' },
+        { cargo: 'Entregador', msg: 'fez entregas expressas' },
+        { cargo: 'Cozinheiro', msg: 'preparou pratos no restaurante' },
+        { cargo: 'Mecânico', msg: 'consertou veículos na oficina' }
       ];
 
       const job = trabalhos[Math.floor(Math.random() * trabalhos.length)];
@@ -212,11 +211,11 @@ client.on('interactionCreate', async interaction => {
 
       const embed = new EmbedBuilder()
         .setColor('#57F287')
-        .setTitle('💼 Turno de Trabalho Concluído!')
-        .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg} com sucesso!`)
+        .setTitle('💼 Trabalho Realizado!')
+        .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg}!`)
         .addFields(
-          { name: '💵 Salário Recebido', value: `**+$${earnings}** adicionados à carteira`, inline: true },
-          { name: '💰 Saldo na Carteira', value: `**$${eco.wallet}**`, inline: true }
+          { name: '💵 Salário', value: `**+$${earnings}**`, inline: true },
+          { name: '💰 Carteira', value: `**$${eco.wallet}**`, inline: true }
         )
         .setTimestamp();
 
@@ -227,11 +226,11 @@ client.on('interactionCreate', async interaction => {
       const target = interaction.options.getUser('usuario');
       const amount = interaction.options.getInteger('quantia');
 
-      if (target.id === interaction.user.id) return await interaction.reply({ content: '❌ Você não pode transferir dinheiro para si mesmo!', ephemeral: true });
-      if (amount <= 0) return await interaction.reply({ content: '❌ Insira um valor válido maior que zero!', ephemeral: true });
+      if (target.id === interaction.user.id) return await interaction.reply({ content: '❌ Você não pode pagar a si mesmo!', ephemeral: true });
+      if (amount <= 0) return await interaction.reply({ content: '❌ Insira um valor válido!', ephemeral: true });
 
       const senderEco = getUserEco(dbEco, guildId, interaction.user.id);
-      if (senderEco.wallet < amount) return await interaction.reply({ content: '❌ Você não tem esse valor disponível na carteira!', ephemeral: true });
+      if (senderEco.wallet < amount) return await interaction.reply({ content: '❌ Você não tem saldo suficiente na carteira!', ephemeral: true });
 
       const targetEco = getUserEco(dbEco, guildId, target.id);
       senderEco.wallet -= amount;
@@ -240,8 +239,8 @@ client.on('interactionCreate', async interaction => {
 
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
-        .setTitle('💸 Transferência Realizada (PIX)')
-        .setDescription(`Você enviou **$${amount}** para ${target} com sucesso!`);
+        .setTitle('💸 Transferência (PIX)')
+        .setDescription(`Você enviou **$${amount}** para ${target}!`);
 
       return await interaction.reply({ embeds: [embed] });
     }
@@ -255,24 +254,35 @@ client.on('interactionCreate', async interaction => {
       if (sortedUsers.length === 0) return await interaction.reply({ content: '❌ Ainda não há registros na economia deste servidor.' });
 
       async function generateLeaderboardImage(page) {
-        const canvas = createCanvas(800, 700);
+        const canvas = createCanvas(900, 750);
         const ctx = canvas.getContext('2d');
 
-        // Fundo com gradiente escuro e moderno
-        const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        bgGrad.addColorStop(0, '#111214');
-        bgGrad.addColorStop(1, '#1e1f22');
-        ctx.fillStyle = bgGrad;
+        // Fundo com tom escuro elegante idêntico ao modelo
+        ctx.fillStyle = '#17181c';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Cabeçalho / Título
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillText('🏆 Ranking dos Mais Ricos', 40, 65);
+        // Faixa de fundo decorativa superior
+        ctx.fillStyle = '#1f2024';
+        ctx.fillRect(0, 0, canvas.width, 110);
 
-        ctx.fillStyle = '#949ba4';
-        ctx.font = '16px sans-serif';
-        ctx.fillText(`Servidor: ${interaction.guild.name}`, 40, 95);
+        // Nome do Servidor no Topo
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.fillText(interaction.guild.name, 45, 65);
+
+        // Ícone/Logo do Servidor no canto superior direito (se houver)
+        try {
+          if (interaction.guild.iconURL()) {
+            const guildIcon = await loadImage(interaction.guild.iconURL({ extension: 'png', size: 128 }));
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(835, 55, 30, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(guildIcon, 805, 25, 60, 60);
+            ctx.restore();
+          }
+        } catch (e) {}
 
         const start = page * 10;
         const currentSlice = sortedUsers.slice(start, start + 10);
@@ -285,51 +295,48 @@ client.on('interactionCreate', async interaction => {
           try {
             member = await interaction.guild.members.fetch(entry.userId);
           } catch {
-            member = { user: { username: 'Membro Desconhecido' }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
+            member = { user: { username: 'Membro Desconhecido', id: entry.userId }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
           }
 
-          // Caixa do Usuário (Cartão)
-          ctx.fillStyle = '#2b2d31';
+          // Bloco do Cartão do Usuário
+          ctx.fillStyle = '#222327';
           ctx.beginPath();
-          ctx.roundRect(40, y, 720, 52, 12);
+          ctx.roundRect(40, y, 820, 56, 10);
           ctx.fill();
 
-          // Cores das medalhas/posições do Top 3
-          if (rank === 1) ctx.fillStyle = '#fEE75C'; // Ouro
-          else if (rank === 2) ctx.fillStyle = '#BCC0C4'; // Prata
-          else if (rank === 3) ctx.fillStyle = '#EB459E'; // Bronze
-          else ctx.fillStyle = '#ffffff';
-
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText(`#${rank}`, 65, y + 33);
-
-          // Avatar circular
+          // Avatar circular à esquerda
           try {
             const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 128 }));
             ctx.save();
             ctx.beginPath();
-            ctx.arc(135, y + 26, 20, 0, Math.PI * 2, true);
+            ctx.arc(78, y + 28, 22, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(avatarImg, 115, y + 6, 40, 40);
+            ctx.drawImage(avatarImg, 56, y + 6, 44, 44);
             ctx.restore();
           } catch (e) {}
 
-          // Nome do Usuário
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 18px sans-serif';
-          ctx.fillText(member.user.username, 175, y + 33);
+          // Posição e Nome (#1 Nome do Usuário)
+          ctx.fillStyle = rank === 1 ? '#fEE75C' : rank === 2 ? '#BCC0C4' : rank === 3 ? '#EB459E' : '#ffffff';
+          ctx.font = 'bold 20px sans-serif';
+          ctx.fillText(`#${rank} ${member.user.username}`, 120, y + 26);
 
-          // Saldo Total (À direita)
+          // ID do Usuário logo abaixo
+          ctx.fillStyle = '#949ba4';
+          ctx.font = '14px sans-serif';
+          ctx.fillText(`ID: ${member.userId}`, 120, y + 46);
+
+          // Saldo Total de Moedas (À direita)
           ctx.fillStyle = '#57F287';
           ctx.font = 'bold 20px sans-serif';
           ctx.textAlign = 'right';
-          ctx.fillText(`$${entry.total.toLocaleString()}`, 735, y + 33);
+          ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 36);
           ctx.textAlign = 'left';
 
-          y += 62;
+          y += 66;
         }
-        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-rico.png' });
+
+        return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard-moedas.png' });
       }
 
       let currentPage = 0;
@@ -361,7 +368,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // --- BOTÕES E CONFIGURAÇÕES ---
+  // --- BOTÕES E CONFIGURAÇÕES DE TICKET ---
   if (interaction.isButton()) {
     if (interaction.customId === 'cfg_ticket_embed') {
       const modal = new ModalBuilder().setCustomId('modal_ticket_embed').setTitle('Personalizar Embed');
