@@ -22,7 +22,7 @@ const path = require('path');
 const http = require('http');
 
 // ==========================================
-// TRATAMENTO GLOBAL DE ERROS (EVITA QUEDAS NO RENDER)
+// TRATAMENTO GLOBAL DE ERROS
 // ==========================================
 process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️ [unhandledRejection] Erro assíncrono capturado:', reason);
@@ -43,7 +43,7 @@ const client = new Client({
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const ECONOMY_FILE = path.join(__dirname, 'economy.json');
-const SETS_FILE = path.join(__dirname, 'sets.json');
+const CUSTOM_SETS_FILE = path.join(__dirname, 'custom_sets.json');
 const PREFIX = '?';
 
 function loadData(file, defaultVal = {}) {
@@ -67,67 +67,49 @@ function saveData(file, data) {
 }
 
 // ==========================================
-// BASE DE DADOS DOS SETS (MARTELOS DE FLEE THE FACILITY)
+// REGISTRO DE COMANDOS SLASH
 // ==========================================
-const SETS = [
-  { id: 1, name: "Party Ballons", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'party_ballons.png') },
-  { id: 2, name: "Lovesick", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'lovesick.png') },
-  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'gothic_bouquet.png') },
-  { id: 4, name: "Devlish", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'devlish.png') },
-  { id: 5, name: "Spooky Brew", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'spooky_brew.png') },
-  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'pumpkin_slice.png') },
-  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'cherry_bloosom.png') },
-  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'sakura_parasol.png') },
-  { id: 9, name: "Devilborn", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'devilborn.png') },
-  { id: 10, name: "Dark Mansion", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'dark_mansion.png') },
-  { id: 11, name: "Phantom Light", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'phantom_light.png') },
-  { id: 12, name: "Dark Bones", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'dark_bones.png') },
-  { id: 13, name: "Classic", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'classic.png') },
-  { id: 14, name: "Ice Cream", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'ice_cream.png') },
-  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pegasus_blade.png') },
-  { id: 16, name: "Marine Anchor", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'marine_anchor.png') },
-  { id: 17, name: "Phosphoros", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'phosphoros.png') },
-  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'psycho_chainsaw.png') },
-  { id: 19, name: "Egg Basket", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'egg_basket.png') },
-  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'bloodthisrt_axe.png') },
-  { id: 21, name: "Paranormal", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'paranormal.png') },
-  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pot_gold.png') },
-  { id: 23, name: "Acidic Potion", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'acidic_potion.png') },
-  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'dragon_puppet.png') },
-  { id: 25, name: "Spring World", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'spring_world.png') },
-  { id: 26, name: "Piñata", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pinata.png') },
-  { id: 27, name: "Light Bone", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'light_bone.png') },
-  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'witch_hunter.png') },
-  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'warlock_hunter.png') },
-  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'alchemist_hunter.png') },
-  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'bubbly_gun.png') },
-  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'strawberry_basket.png') },
-  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'lemon_basket.png') },
-  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'blueberry_basket.png') },
-  { id: 35, name: "Coffin", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'coffin.png') },
-  { id: 36, name: "Thombstone", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'thombstone.png') },
-  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'ancestral_trident.png') },
-  { id: 38, name: "Mothership", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'mothership.png') },
-  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'mystical_trident.png') },
-  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'ancient_trident.png') },
-  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'choco_dip.png') },
-  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'psycho_axe.png') },
-  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'watergun.png') },
-  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'lemoned_jar.png') },
-  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'ube_rol.png') },
-  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'red_panda.png') },
-  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'sour_candy.png') },
-  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'blue_star_warp.png') },
-  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'pink_star_wrap.png') },
-  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'bleak_ink.png') }
-];
-
 const commands = [
-  new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility!'),
+  new SlashCommandBuilder()
+    .setName('config')
+    .setDescription('Painel de configuração do servidor.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.Administrator)
+    .addSubcommand(sub => 
+      sub.setName('sets')
+        .setDescription('Adiciona um novo set de Flee the Facility ao sistema do servidor.')
+        .addStringOption(opt => opt.setName('nome').setDescription('Nome do set / martelo').setRequired(true))
+        .addStringOption(opt => 
+          opt.setName('raridade')
+            .setDescription('Selecione a raridade do set')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Comum', value: 'Comum' },
+              { name: 'Rara', value: 'Rara' },
+              { name: 'Épica', value: 'Épica' },
+              { name: 'Lendária', value: 'Lendária' },
+              { name: 'Lendária de Robux', value: 'Lendária de Robux' }
+            )
+        )
+        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Envie a imagem do set/martelo').setRequired(true))
+    )
+    .addSubcommand(sub => 
+      sub.setName('ticket')
+        .setDescription('Gerencia e configura o sistema de tickets.')
+        .addStringOption(opt => opt.setName('titulo').setDescription('Título do painel de tickets').setRequired(false))
+        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição do painel de tickets').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('imagem_arquivo').setDescription('Imagem principal do painel (anexo)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('miniatura_arquivo').setDescription('Miniatura / Thumbnail do painel (anexo)').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo_staff').setDescription('Cargo de atendimento da staff').setRequired(false))
+        .addChannelOption(opt => opt.setName('canal_envio').setDescription('Canal onde o painel será enviado').setRequired(false))
+    )
+    .addSubcommand(sub => sub.setName('economia').setDescription('Gerencia as configurações de economia do servidor.')),
+
+  new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility cadastrado!'),
   new SlashCommandBuilder().setName('inventario').setDescription('Visualiza o inventário de sets.').addUserOption(opt => opt.setName('usuario').setDescription('Membro').setRequired(false)),
-  new SlashCommandBuilder().setName('saldo').setDescription('Verifica o saldo.'),
-  new SlashCommandBuilder().setName('work').setDescription('Trabalhe para ganhar moedas.'),
-  new SlashCommandBuilder().setName('leaderboard').setDescription('Ranking de moedas.')
+  new SlashCommandBuilder().setName('saldo').setDescription('Verifica o seu saldo ou de outro membro.').addUserOption(opt => opt.setName('usuario').setDescription('Membro para ver o saldo').setRequired(false)),
+  new SlashCommandBuilder().setName('work').setDescription('Trabalhe em sua profissão para ganhar moedas na cidade!'),
+  new SlashCommandBuilder().setName('pagar').setDescription('Transfere moedas para outro membro.').addUserOption(opt => opt.setName('usuario').setDescription('Quem vai receber').setRequired(true)).addIntegerOption(opt => opt.setName('quantia').setDescription('Valor a ser pago').setRequired(true)),
+  new SlashCommandBuilder().setName('leaderboard').setDescription('Mostra o ranking visual de moedas da cidade.')
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -135,37 +117,276 @@ client.once('ready', async () => {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   try {
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-    console.log('✅ Comandos Slash registrados!');
+    console.log('✅ Comandos Slash registrados com sucesso!');
   } catch (error) {
     console.error('❌ Erro ao registrar comandos:', error);
   }
 });
 
-function loadJson(file, def) {
-  try {
-    if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify(def, null, 2));
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (e) { return def; }
+function getGuildConfig(guildId) {
+  let db = loadData(CONFIG_FILE, {});
+  if (!db[guildId]) {
+    db[guildId] = {
+      ticket: {
+        title: '🎫 Central de Atendimento & Suporte',
+        description: 'Selecione abaixo o motivo do seu contato para abrir um ticket.',
+        image: '',
+        thumbnail: '',
+        staffRoleId: null,
+        targetChannelId: null
+      },
+      economy: {
+        minWork: 80,
+        maxWork: 250
+      }
+    };
+    saveData(CONFIG_FILE, db);
+  }
+  return db[guildId];
 }
 
-function saveJson(file, data) {
-  try { fs.writeFileSync(file, JSON.stringify(data, null, 2)); } catch(e){}
+function getUserEco(dbEco, guildId, userId) {
+  if (!dbEco[guildId]) dbEco[guildId] = {};
+  if (!dbEco[guildId][userId]) {
+    dbEco[guildId][userId] = { wallet: 150, bank: 500, lastWork: 0 };
+  }
+  return dbEco[guildId][userId];
+}
+
+function getGuildCustomSets(guildId) {
+  let db = loadData(CUSTOM_SETS_FILE, {});
+  if (!db[guildId]) {
+    db[guildId] = [];
+    saveData(CUSTOM_SETS_FILE, db);
+  }
+  return db[guildId];
 }
 
 function getUserSets(guildId, userId) {
-  let db = loadJson(SETS_FILE, {});
+  let db = loadData(CUSTOM_SETS_FILE + '_user', {});
   if (!db[guildId]) db[guildId] = {};
   if (!db[guildId][userId]) db[guildId][userId] = { pending: null, cooldown: 0, inventory: {} };
   return db[guildId][userId];
+}
+
+function saveUserSets(guildId, userId, data) {
+  let db = loadData(CUSTOM_SETS_FILE + '_user', {});
+  if (!db[guildId]) db[guildId] = {};
+  db[guildId][userId] = data;
+  saveData(CUSTOM_SETS_FILE + '_user', db);
+}
+
+// ==========================================
+// FUNÇÕES DE ECONOMIA
+// ==========================================
+async function handleWork(messageOrInteraction, user, guildId, guildCfg) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const eco = getUserEco(dbEco, guildId, user.id);
+  const cooldown = 30000;
+  
+  if (Date.now() - eco.lastWork < cooldown) {
+    const timeLeft = Math.ceil((cooldown - (Date.now() - eco.lastWork)) / 1000);
+    const content = `⏳ Você está descansando! Volte a trabalhar em **${timeLeft} segundos**.`;
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content, ephemeral: true }) : await messageOrInteraction.channel.send(content);
+  }
+
+  const trabalhos = [
+    { cargo: 'Programador', msg: 'criou scripts incríveis' },
+    { cargo: 'Policial', msg: 'patrulhou as ruas da cidade' },
+    { cargo: 'Entregador', msg: 'fez entregas expressas' },
+    { cargo: 'Cozinheiro', msg: 'preparou pratos no restaurante' },
+    { cargo: 'Mecânico', msg: 'consertou veículos na oficina' }
+  ];
+
+  const job = trabalhos[Math.floor(Math.random() * trabalhos.length)];
+  const min = guildCfg.economy.minWork;
+  const max = guildCfg.economy.maxWork;
+  const earnings = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  eco.wallet += earnings;
+  eco.lastWork = Date.now();
+  saveData(ECONOMY_FILE, dbEco);
+
+  const embed = new EmbedBuilder()
+    .setColor('#57F287')
+    .setTitle('💼 Trabalho Realizado!')
+    .setDescription(`Você trabalhou como **${job.cargo}** e ${job.msg}!`)
+    .addFields(
+      { name: '💵 Salário', value: `**+$${earnings}**`, inline: true },
+      { name: '💰 Carteira', value: `**$${eco.wallet}**`, inline: true }
+    )
+    .setTimestamp();
+
+  if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply({ embeds: [embed] });
+  } else {
+    return await messageOrInteraction.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleSaldo(messageOrInteraction, targetUser, guildId) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const eco = getUserEco(dbEco, guildId, targetUser.id);
+  saveData(ECONOMY_FILE, dbEco);
+
+  const total = eco.wallet + eco.bank;
+
+  const embed = new EmbedBuilder()
+    .setColor('#2b2d31')
+    .setAuthor({ name: `Extrato Bancário • ${targetUser.username}`, iconURL: targetUser.displayAvatarURL() })
+    .setDescription(`Detalhes financeiros da conta de ${targetUser}.`)
+    .addFields(
+      { name: '💵 Carteira', value: `\`$${eco.wallet.toLocaleString()}\``, inline: true },
+      { name: '🏦 Banco', value: `\`$${eco.bank.toLocaleString()}\``, inline: true },
+      { name: '💎 Patrimônio Total', value: `\`$${total.toLocaleString()}\``, inline: false }
+    )
+    .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+    .setFooter({ text: 'Sistema Financeiro da Cidade', iconURL: messageOrInteraction.guild.iconURL() })
+    .setTimestamp();
+
+  if (messageOrInteraction.reply) {
+    return await messageOrInteraction.reply({ embeds: [embed] });
+  } else {
+    return await messageOrInteraction.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleLeaderboard(messageOrInteraction, guild) {
+  let dbEco = loadData(ECONOMY_FILE, {});
+  const guildEconomy = dbEco[guild.id] || {};
+  const sortedUsers = Object.entries(guildEconomy)
+    .map(([userId, data]) => ({ userId, total: data.wallet + data.bank, wallet: data.wallet, bank: data.bank }))
+    .sort((a, b) => b.total - a.total);
+
+  if (sortedUsers.length === 0) {
+    const msg = '❌ Ainda não há registros na economia deste servidor.';
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg }) : await messageOrInteraction.channel.send(msg);
+  }
+
+  async function generateLeaderboardImage(page) {
+    const canvas = createCanvas(900, 850);
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#111214';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
+    ctx.fillRect(0, 0, canvas.width, 120);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(guild.name, 50, 70);
+
+    try {
+      if (guild.iconURL()) {
+        const guildIcon = await loadImage(guild.iconURL({ extension: 'png', size: 128 }));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(830, 60, 35, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(guildIcon, 795, 25, 70, 70);
+        ctx.restore();
+      }
+    } catch (e) {}
+
+    const start = page * 10;
+    const currentSlice = sortedUsers.slice(start, start + 10);
+
+    let y = 145;
+    for (let i = 0; i < currentSlice.length; i++) {
+      const entry = currentSlice[i];
+      const rank = start + i + 1;
+      let member;
+      try {
+        member = await guild.members.fetch(entry.userId);
+      } catch {
+        member = { user: { username: 'Membro Desconhecido', id: entry.userId }, displayAvatarURL: () => 'https://cdn.discord-icons.com/default.png' };
+      }
+
+      ctx.fillStyle = 'rgba(34, 35, 39, 0.92)';
+      ctx.beginPath();
+      ctx.roundRect(40, y, 820, 70, 14);
+      ctx.fill();
+
+      try {
+        const avatarImg = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(85, y + 35, 28, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatarImg, 57, y + 7, 56, 56);
+        ctx.restore();
+      } catch (e) {}
+
+      ctx.fillStyle = rank === 1 ? '#fEE75C' : rank === 2 ? '#BCC0C4' : rank === 3 ? '#EB459E' : '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`#${rank}  ${member.user.username}`, 135, y + 32);
+
+      ctx.fillStyle = '#b5bac1';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`ID: ${member.userId}`, 135, y + 55);
+
+      ctx.fillStyle = '#57F287';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`$${entry.total.toLocaleString()}`, 835, y + 43);
+      ctx.textAlign = 'left';
+
+      y += 82;
+    }
+
+    return new AttachmentBuilder(await canvas.encode('png'), { name: 'leaderboard.png' });
+  }
+
+  let currentPage = 0;
+  const maxPages = Math.ceil(sortedUsers.length / 10) - 1;
+
+  const attachment = await generateLeaderboardImage(currentPage);
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
+    new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
+  );
+
+  let msg;
+  if (messageOrInteraction.reply) {
+    msg = await messageOrInteraction.reply({ files: [attachment], components: [row], fetchReply: true });
+  } else {
+    msg = await messageOrInteraction.channel.send({ files: [attachment], components: [row] });
+  }
+
+  const authorId = messageOrInteraction.user ? messageOrInteraction.user.id : messageOrInteraction.author.id;
+  const collector = msg.createMessageComponentCollector({ time: 60000 });
+  
+  collector.on('collect', async i => {
+    if (i.user.id !== authorId) return i.reply({ content: '❌ Você não pode controlar este painel!', ephemeral: true });
+
+    if (i.customId === 'lb_prev') currentPage--;
+    if (i.customId === 'lb_next') currentPage++;
+
+    const newAttachment = await generateLeaderboardImage(currentPage);
+    const newRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('lb_prev').setLabel('◀ Anterior').setStyle(ButtonStyle.Primary).setDisabled(currentPage === 0),
+      new ButtonBuilder().setCustomId('lb_next').setLabel('Próxima ▶').setStyle(ButtonStyle.Primary).setDisabled(currentPage >= maxPages)
+    );
+
+    await i.update({ files: [newAttachment], components: [newRow] });
+  });
 }
 
 // ==========================================
 // FUNÇÃO DE SORTEIO DE SETS (?set / /set)
 // ==========================================
 async function handleSetCommand(messageOrInteraction, user, guildId) {
-  let dbSets = loadJson(SETS_FILE, {});
+  const guildSets = getGuildCustomSets(guildId);
+  if (!guildSets || guildSets.length === 0) {
+    const msg = '❌ Nenhum set foi cadastrado neste servidor ainda! Use `/config sets` para adicionar.';
+    return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg, ephemeral: true }) : await messageOrInteraction.channel.send(msg);
+  }
+
   const userSetData = getUserSets(guildId, user.id);
-  const cooldownTime = 10 * 60 * 1000; // 10 minutos
+  const cooldownTime = 10 * 60 * 1000; // 10 Minutos
   const now = Date.now();
 
   if (now - userSetData.cooldown < cooldownTime) {
@@ -176,27 +397,28 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
     return messageOrInteraction.reply ? await messageOrInteraction.reply({ content: msg, ephemeral: true }) : await messageOrInteraction.channel.send(msg);
   }
 
-  // Sorteio por Porcentagem de Raridade
   const randomChance = Math.floor(Math.random() * 100) + 1;
-  let selectedRarity = 'Rara';
-  if (randomChance >= 61 && randomChance < 86) selectedRarity = 'Épica';
-  else if (randomChance >= 86 && randomChance < 96) selectedRarity = 'Lendária';
-  else if (randomChance >= 96) selectedRarity = 'Lendária de Robux';
+  let selectedRarity = 'Comum';
+  if (randomChance > 40 && randomChance <= 70) selectedRarity = 'Rara';
+  else if (randomChance > 70 && randomChance <= 90) selectedRarity = 'Épica';
+  else if (randomChance > 90 && randomChance <= 97) selectedRarity = 'Lendária';
+  else if (randomChance > 97) selectedRarity = 'Lendária de Robux';
 
-  const filteredSets = SETS.filter(s => s.rarity === selectedRarity);
+  let filteredSets = guildSets.filter(s => s.rarity === selectedRarity);
+  if (filteredSets.length === 0) filteredSets = guildSets;
+
   const pendingSet = filteredSets[Math.floor(Math.random() * filteredSets.length)];
 
   userSetData.pending = pendingSet.id;
   userSetData.cooldown = now;
-  dbSets[guildId][user.id] = userSetData;
-  saveJson(SETS_FILE, dbSets);
+  saveUserSets(guildId, user.id, userSetData);
 
   let filesArr = [];
   let thumbnailProp = null;
-  
-  if (fs.existsSync(pendingSet.image)) {
-    const fileName = path.basename(pendingSet.image);
-    filesArr.push(new AttachmentBuilder(pendingSet.image, { name: fileName }));
+
+  if (pendingSet.imagePath && fs.existsSync(pendingSet.imagePath)) {
+    const fileName = path.basename(pendingSet.imagePath);
+    filesArr.push(new AttachmentBuilder(pendingSet.imagePath, { name: fileName }));
     thumbnailProp = `attachment://${fileName}`;
   }
 
@@ -205,9 +427,7 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
     .setTitle('🎉 Você ganhou um Set!')
     .setDescription(`## ${pendingSet.name}\n\n**Raridade:** ${pendingSet.rarity}\n\nClique no botão abaixo para resgatar este item para o seu inventário!`);
 
-  if (thumbnailProp) {
-    embed.setThumbnail(thumbnailProp);
-  }
+  if (thumbnailProp) embed.setThumbnail(thumbnailProp);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -225,14 +445,14 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
 }
 
 // ==========================================
-// FUNÇÃO DO INVENTÁRIO (VISUAL EM CANVAS)
+// INVENTÁRIO EM CANVAS
 // ==========================================
 async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
-  let dbSets = loadJson(SETS_FILE, {});
-  const userSetData = (dbSets[guildId] && dbSets[guildId][targetUser.id]) ? dbSets[guildId][targetUser.id] : { inventory: {} };
+  const guildSets = getGuildCustomSets(guildId);
+  let userSetData = getUserSets(guildId, targetUser.id);
   const userInventory = userSetData.inventory || {};
 
-  const userOwnedSets = SETS.filter(s => (userInventory[s.id] || 0) > 0);
+  const userOwnedSets = guildSets.filter(s => (userInventory[s.id] || 0) > 0);
   const filteredSets = activeCategory === 'Todas' ? userOwnedSets : userOwnedSets.filter(s => s.rarity === activeCategory);
 
   const canvas = createCanvas(1000, 500);
@@ -292,13 +512,13 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     ctx.stroke();
 
     try {
-      if (fs.existsSync(setItem.image)) {
-        const setImg = await loadImage(setItem.image);
+      if (setItem.imagePath && fs.existsSync(setItem.imagePath)) {
+        const setImg = await loadImage(setItem.imagePath);
         ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
       }
     } catch (e) {}
 
-    const count = userInventory[setItem.id];
+    const count = userInventory[setItem.id] || 0;
     ctx.fillStyle = '#2196F3';
     ctx.beginPath();
     ctx.arc(x + boxSize - 12, y + 12, 12, 0, Math.PI * 2);
@@ -318,16 +538,16 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     descText += `*Nenhum set encontrado na categoria **${activeCategory}**.*`;
   } else {
     filteredSets.forEach(setItem => {
-      const qty = userInventory[setItem.id];
-      descText += `• **${setItem.name}**: ${qty}x\n`;
+      const qty = userInventory[setItem.id] || 0;
+      descText += `• **${setItem.name}** (${setItem.rarity}): ${qty}x\n`;
     });
   }
 
   const embed = new EmbedBuilder().setColor('#2196F3').setDescription(descText).setImage('attachment://inventario.png');
-  const categories = ['Todas', 'Rara', 'Épica', 'Lendária', 'Lendária de Robux'];
+  const categories = ['Todas', 'Comum', 'Rara', 'Épica', 'Lendária', 'Lendária de Robux'];
   const row = new ActionRowBuilder();
 
-  categories.forEach(cat => {
+  categories.slice(0, 5).forEach(cat => {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId(`inv_cat_${targetUser.id}_${cat}`)
@@ -344,7 +564,7 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
-// EVENTO DE MENSAGENS (PREFIXO ?)
+// EVENTOS DE MENSAGENS (PREFIXO ?)
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.guild) return;
@@ -353,6 +573,20 @@ client.on('messageCreate', async message => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
   const guildId = message.guild.id;
+  const guildCfg = getGuildConfig(guildId);
+
+  if (command === 'work') {
+    await handleWork(message, message.author, guildId, guildCfg);
+  }
+
+  if (command === 'saldo') {
+    const target = message.mentions.users.first() || message.author;
+    await handleSaldo(message, target, guildId);
+  }
+
+  if (command === 'lb') {
+    await handleLeaderboard(message, message.guild);
+  }
 
   if (command === 'set') {
     await handleSetCommand(message, message.author, guildId);
@@ -365,17 +599,167 @@ client.on('messageCreate', async message => {
 });
 
 // ==========================================
-// EVENTO DE INTERAÇÕES (SLASH & BOTÕES)
+// EVENTOS DE INTERAÇÕES (SLASH & BOTÕES)
 // ==========================================
 client.on('interactionCreate', async interaction => {
   if (!interaction.guild) return;
   const guildId = interaction.guild.id;
+  let dbEco = loadData(ECONOMY_FILE, {});
+  let guildCfg = getGuildConfig(guildId);
 
   if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === 'set') {
+    const { commandName } = interaction;
+
+    if (commandName === 'config') {
+      const sub = interaction.options.getSubcommand();
+
+      if (sub === 'sets') {
+        const nome = interaction.options.getString('nome');
+        const raridade = interaction.options.getString('raridade');
+        const imagemArquivo = interaction.options.getAttachment('imagem');
+
+        const uploadsDir = path.join(__dirname, 'uploads_sets');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        try {
+          const resImg = await fetch(imagemArquivo.url);
+          const bufImg = Buffer.from(await resImg.arrayBuffer());
+          const imgPath = path.join(uploadsDir, `${guildId}-${Date.now()}.png`);
+          fs.writeFileSync(imgPath, bufImg);
+
+          let guildSets = getGuildCustomSets(guildId);
+          const newSet = {
+            id: Date.now(),
+            name: nome,
+            rarity: raridade,
+            imagePath: imgPath
+          };
+
+          guildSets.push(newSet);
+          let allSetsDb = loadData(CUSTOM_SETS_FILE, {});
+          allSetsDb[guildId] = guildSets;
+          saveData(CUSTOM_SETS_FILE, allSetsDb);
+
+          const embed = new EmbedBuilder()
+            .setColor('#57F287')
+            .setTitle('✅ Set Adicionado com Sucesso!')
+            .setDescription(`O set **${nome}** foi cadastrado na categoria **${raridade}**!`)
+            .setThumbnail(imagemArquivo.url);
+
+          return await interaction.reply({ embeds: [embed], ephemeral: true });
+        } catch (e) {
+          console.error(e);
+          return await interaction.reply({ content: '❌ Ocorreu um erro ao salvar a imagem do set.', ephemeral: true });
+        }
+      }
+
+      if (sub === 'ticket') {
+        const titulo = interaction.options.getString('titulo');
+        const descricao = interaction.options.getString('descricao');
+        const imagemArquivo = interaction.options.getAttachment('imagem_arquivo');
+        const miniaturaArquivo = interaction.options.getAttachment('miniatura_arquivo');
+        const cargoStaff = interaction.options.getRole('cargo_staff');
+        const canalEnvio = interaction.options.getChannel('canal_envio');
+
+        if (titulo) guildCfg.ticket.title = titulo;
+        if (descricao) guildCfg.ticket.description = descricao;
+        if (cargoStaff) guildCfg.ticket.staffRoleId = cargoStaff.id;
+        if (canalEnvio) guildCfg.ticket.targetChannelId = canalEnvio.id;
+
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        if (imagemArquivo) {
+          try {
+            const resImg = await fetch(imagemArquivo.url);
+            const bufImg = Buffer.from(await resImg.arrayBuffer());
+            const imgPath = path.join(uploadsDir, `${guildId}-ticket-img-${Date.now()}.png`);
+            fs.writeFileSync(imgPath, bufImg);
+            guildCfg.ticket.image = imgPath;
+          } catch (e) {}
+        }
+
+        if (miniaturaArquivo) {
+          try {
+            const resThumb = await fetch(miniaturaArquivo.url);
+            const bufThumb = Buffer.from(await resThumb.arrayBuffer());
+            const thumbPath = path.join(uploadsDir, `${guildId}-ticket-thumb-${Date.now()}.png`);
+            fs.writeFileSync(thumbPath, bufThumb);
+            guildCfg.ticket.thumbnail = thumbPath;
+          } catch (e) {}
+        }
+
+        let dbConfig = loadData(CONFIG_FILE, {});
+        dbConfig[guildId] = guildCfg;
+        saveData(CONFIG_FILE, dbConfig);
+
+        const embedCfg = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle('✅ Configuração de Tickets Atualizada!')
+          .addFields(
+            { name: '📌 Título', value: `\`${guildCfg.ticket.title}\``, inline: false },
+            { name: '📝 Descrição', value: `\`${guildCfg.ticket.description}\``, inline: false },
+            { name: '🛡️ Cargo Staff', value: guildCfg.ticket.staffRoleId ? `<@&${guildCfg.ticket.staffRoleId}>` : '❌ Não definido', inline: true },
+            { name: '📢 Canal de Envio', value: guildCfg.ticket.targetChannelId ? `<#${guildCfg.ticket.targetChannelId}>` : '❌ Não definido', inline: true }
+          );
+
+        const rowLaunch = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('cfg_ticket_enviar').setLabel('Lançar Painel Agora').setStyle(ButtonStyle.Success).setEmoji('🚀')
+        );
+
+        return await interaction.reply({ embeds: [embedCfg], components: [rowLaunch], ephemeral: true });
+      }
+
+      if (sub === 'economia') {
+        const embed = new EmbedBuilder()
+          .setColor('#00FFCC')
+          .setTitle('⚙️ Painel de Controle - Economia')
+          .setDescription('O sistema de economia está ativo e configurado com ganhos por `?work` ou `/work`.');
+        return await interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+    }
+
+    if (commandName === 'saldo') {
+      const target = interaction.options.getUser('usuario') || interaction.user;
+      await handleSaldo(interaction, target, guildId);
+    }
+
+    if (commandName === 'work') {
+      await handleWork(interaction, interaction.user, guildId, guildCfg);
+    }
+
+    if (commandName === 'pagar') {
+      const target = interaction.options.getUser('usuario');
+      const amount = interaction.options.getInteger('quantia');
+
+      if (target.id === interaction.user.id) return await interaction.reply({ content: '❌ Você não pode pagar a si mesmo!', ephemeral: true });
+      if (amount <= 0) return await interaction.reply({ content: '❌ Insira um valor válido!', ephemeral: true });
+
+      const senderEco = getUserEco(dbEco, guildId, interaction.user.id);
+      if (senderEco.wallet < amount) return await interaction.reply({ content: '❌ Você não tem saldo suficiente na carteira!', ephemeral: true });
+
+      const targetEco = getUserEco(dbEco, guildId, target.id);
+      senderEco.wallet -= amount;
+      targetEco.wallet += amount;
+      saveData(ECONOMY_FILE, dbEco);
+
+      const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('💸 Transferência (PIX)')
+        .setDescription(`Você enviou **$${amount}** para ${target}!`);
+
+      return await interaction.reply({ embeds: [embed] });
+    }
+
+    if (commandName === 'leaderboard') {
+      await handleLeaderboard(interaction, interaction.guild);
+    }
+
+    if (commandName === 'set') {
       await handleSetCommand(interaction, interaction.user, guildId);
     }
-    if (interaction.commandName === 'inventario') {
+
+    if (commandName === 'inventario') {
       const target = interaction.options.getUser('usuario') || interaction.user;
       await handleInventory(interaction, target, guildId, 'Todas', false);
     }
@@ -384,8 +768,7 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton()) {
     if (interaction.customId.startsWith('claim_set_')) {
       const setId = parseInt(interaction.customId.split('_')[2]);
-      let dbSets = loadJson(SETS_FILE, {});
-      const userSetData = getUserSets(guildId, interaction.user.id);
+      let userSetData = getUserSets(guildId, interaction.user.id);
 
       if (!userSetData.pending || userSetData.pending !== setId) {
         return interaction.reply({ content: '❌ Este set não está disponível para resgate por você!', ephemeral: true });
@@ -394,26 +777,27 @@ client.on('interactionCreate', async interaction => {
       if (!userSetData.inventory[setId]) userSetData.inventory[setId] = 0;
       userSetData.inventory[setId] += 1;
       userSetData.pending = null;
-      dbSets[guildId][interaction.user.id] = userSetData;
-      saveJson(SETS_FILE, dbSets);
+      saveUserSets(guildId, interaction.user.id, userSetData);
 
-      const claimedSet = SETS.find(s => s.id === setId);
+      const guildSets = getGuildCustomSets(guildId);
+      const claimedSet = guildSets.find(s => s.id === setId);
+
       const disabledRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('claimed').setLabel('🎁 Set Resgatado').setStyle(ButtonStyle.Secondary).setDisabled(true)
       );
 
       let filesArr = [];
       let thumbnailProp = null;
-      if (fs.existsSync(claimedSet.image)) {
-        const fileName = path.basename(claimedSet.image);
-        filesArr.push(new AttachmentBuilder(claimedSet.image, { name: fileName }));
+      if (claimedSet && fs.existsSync(claimedSet.imagePath)) {
+        const fileName = path.basename(claimedSet.imagePath);
+        filesArr.push(new AttachmentBuilder(claimedSet.imagePath, { name: fileName }));
         thumbnailProp = `attachment://${fileName}`;
       }
 
       const embed = new EmbedBuilder()
         .setColor('#2196F3')
         .setTitle('Set Resgatado com Sucesso!')
-        .setDescription(`O set **${claimedSet.name}** foi adicionado ao seu inventário!\n\n**Use \`?inventario\` ou \`/inventario\` para visualizar seu inventário.**`);
+        .setDescription(`O set **${claimedSet ? claimedSet.name : 'Item'}** foi adicionado ao seu inventário!\n\n**Use \`?inventario\` ou \`/inventario\` para visualizar.**`);
 
       if (thumbnailProp) embed.setThumbnail(thumbnailProp);
 
@@ -427,6 +811,108 @@ client.on('interactionCreate', async interaction => {
       }
       const targetUser = await client.users.fetch(targetId);
       return await handleInventory(interaction, targetUser, guildId, category, true);
+    }
+
+    if (interaction.customId === 'cfg_ticket_enviar') {
+      const cfg = guildCfg.ticket;
+      if (!cfg.targetChannelId) return await interaction.reply({ content: '❌ Defina um canal de envio primeiro usando `/config ticket`!', ephemeral: true });
+      const targetChannel = interaction.guild.channels.cache.get(cfg.targetChannelId);
+      if (!targetChannel) return await interaction.reply({ content: '❌ Canal de destino não encontrado.', ephemeral: true });
+
+      const ticketEmbed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle(cfg.title)
+        .setDescription(cfg.description)
+        .addFields({ name: '🎮 Jogos & Categorias', value: '• Flee The Facility\n• Murder Mystery 2\n• Piggy\n• Suporte Geral' })
+        .setTimestamp()
+        .setFooter({ text: 'Sistema de Tickets', iconURL: interaction.guild.iconURL() });
+
+      let filesArray = [];
+      if (cfg.image && fs.existsSync(cfg.image)) {
+        filesArray.push(new AttachmentBuilder(cfg.image, { name: 'ticket-banner.png' }));
+        ticketEmbed.setImage('attachment://ticket-banner.png');
+      }
+      if (cfg.thumbnail && fs.existsSync(cfg.thumbnail)) {
+        filesArray.push(new AttachmentBuilder(cfg.thumbnail, { name: 'ticket-thumb.png' }));
+        ticketEmbed.setThumbnail('attachment://ticket-thumb.png');
+      }
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_select_menu')
+        .setPlaceholder('Abrir ticket')
+        .addOptions([
+          { label: 'Flee The Facility', value: 'ticket_ftf', emoji: '🏃‍♂️' },
+          { label: 'Murder Mystery 2', value: 'ticket_mm2', emoji: '🔪' },
+          { label: 'Piggy', value: 'ticket_piggy', emoji: '🐷' },
+          { label: 'Suporte Geral', value: 'ticket_geral', emoji: '🎫' }
+        ]);
+
+      await targetChannel.send({ embeds: [ticketEmbed], components: [new ActionRowBuilder().addComponents(selectMenu)], files: filesArray });
+      return await interaction.reply({ content: `✅ Painel de tickets enviado com sucesso para ${targetChannel}!`, ephemeral: true });
+    }
+
+    if (interaction.customId === 'claim_ticket') {
+      const embed = EmbedBuilder.from(interaction.message.embeds[0])
+        .addFields({ name: '🛠️ Atendido por', value: `${interaction.user}`, inline: false });
+      await interaction.update({ embeds: [embed], components: [interaction.message.components[0]] });
+      return await interaction.followUp({ content: `✅ ${interaction.user} assumiu este atendimento!` });
+    }
+
+    if (interaction.customId === 'close_ticket') {
+      await interaction.reply({ content: '🔒 Fechando ticket em 5 segundos...' });
+      setTimeout(async () => { try { await interaction.channel.delete(); } catch(e){} }, 5000);
+    }
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
+    const selectedValue = interaction.values[0];
+    let categoryName = 'geral';
+    if (selectedValue === 'ticket_ftf') categoryName = 'flee-the-facility';
+    if (selectedValue === 'ticket_mm2') categoryName = 'murder-mystery-2';
+    if (selectedValue === 'ticket_piggy') categoryName = 'piggy';
+    if (selectedValue === 'ticket_geral') categoryName = 'suporte-geral';
+
+    const guild = interaction.guild;
+    const member = interaction.member;
+    const cfg = guildCfg.ticket;
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      const ticketChannel = await guild.channels.create({
+        name: `ticket-${member.user.username}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
+          ...(cfg.staffRoleId ? [{ id: cfg.staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : []),
+          { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }
+        ],
+      });
+
+      const ticketEmbed = new EmbedBuilder()
+        .setColor('#00FFCC')
+        .setTitle(`Ticket de ${member.user.username}`)
+        .setDescription(`Categoria: **${categoryName.toUpperCase()}**\n\nDescreva sua dúvida ou problema detalhadamente.`)
+        .setTimestamp();
+
+      const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('claim_ticket').setLabel('Assumir Ticket').setStyle(ButtonStyle.Primary).setEmoji('🙋‍♂️'),
+        new ButtonBuilder().setCustomId('close_ticket').setLabel('Fechar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+      );
+
+      const staffMention = cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '*(Cargo não configurado)*';
+
+      await ticketChannel.send({ 
+        content: `${member} | ${staffMention}`, 
+        embeds: [ticketEmbed], 
+        components: [actionRow] 
+      });
+
+      await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso: ${ticketChannel}` });
+    } catch (error) {
+      console.error(error);
+      await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket.' });
     }
   }
 });
