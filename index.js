@@ -67,59 +67,59 @@ function saveData(file, data) {
 }
 
 // ==========================================
-// BASE DE DADOS DOS SETS (50 ITENS - SEM EMOJIS PERSONALIZADOS)
+// BASE DE DADOS DOS SETS (COM CAMINHOS LOCAIS DO RENDER)
 // ==========================================
 const SETS = [
-  { id: 1, name: "Party Ballons", rarity: "Rara", image: "https://iili.io/CteYhKl.webp" },
-  { id: 2, name: "Lovesick", rarity: "Rara", image: "https://iili.io/CteYyfR.webp" },
-  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: "https://iili.io/CteaLrl.webp" },
-  { id: 4, name: "Devlish", rarity: "Rara", image: "https://iili.io/CtelbWu.webp" },
-  { id: 5, name: "Spooky Brew", rarity: "Rara", image: "https://iili.io/Cte0o0v.png" },
-  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: "https://iili.io/CtecRYN.webp" },
-  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: "https://iili.io/Cte0MeS.webp" },
-  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: "https://iili.io/Cte1A3x.webp" },
-  { id: 9, name: "Devilborn", rarity: "Rara", image: "https://iili.io/CteGfz7.webp" },
-  { id: 10, name: "Dark Mansion", rarity: "Rara", image: "https://iili.io/CtehbX2.webp" },
-  { id: 11, name: "Phantom Light", rarity: "Rara", image: "https://iili.io/Ctej7Xp.webp" },
-  { id: 12, name: "Dark Bones", rarity: "Rara", image: "https://iili.io/CteE4fa.webp" },
-  { id: 13, name: "Classic", rarity: "Rara", image: "https://iili.io/Cte1ZMu.webp" },
-  { id: 14, name: "Ice Cream", rarity: "Rara", image: "https://iili.io/CtecPu1.webp" },
-  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: "https://iili.io/Cte0vdQ.webp" },
-  { id: 16, name: "Marine Anchor", rarity: "Épica", image: "https://iili.io/CteM9Q1.webp" },
-  { id: 17, name: "Phosphoros", rarity: "Épica", image: "https://iili.io/Cte19Qn.webp" },
-  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: "https://iili.io/CteE0R2.webp" },
-  { id: 19, name: "Egg Basket", rarity: "Épica", image: "https://iili.io/CteVaUJ.webp" },
-  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: "https://iili.io/CteVUW7.webp" },
-  { id: 21, name: "Paranormal", rarity: "Épica", image: "https://iili.io/CteWBst.webp" },
-  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: "https://iili.io/CteXJC7.png" },
-  { id: 23, name: "Acidic Potion", rarity: "Épica", image: "https://iili.io/CtehwUg.webp" },
-  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: "https://iili.io/CteG4h7.png" },
-  { id: 25, name: "Spring World", rarity: "Épica", image: "https://iili.io/CteVKPe.png" },
-  { id: 26, name: "Piñata", rarity: "Épica", image: "https://iili.io/CtehqKX.png" },
-  { id: 27, name: "Light Bone", rarity: "Épica", image: "https://iili.io/CtewPAG.png" },
-  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: "https://iili.io/CtekCU7.webp" },
-  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: "https://iili.io/CteeiNa.webp" },
-  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: "https://iili.io/Cteej9e.webp" },
-  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: "https://iili.io/Cte8Ots.webp" },
-  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: "https://iili.io/CteMoQt.webp" },
-  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: "https://iili.io/CteMiwN.webp" },
-  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: "https://iili.io/CteMOZP.webp" },
-  { id: 35, name: "Coffin", rarity: "Lendária", image: "https://iili.io/CteO0rP.webp" },
-  { id: 36, name: "Thombstone", rarity: "Lendária", image: "https://iili.io/CteNSzx.webp" },
-  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: "https://iili.io/CteUFp9.webp" },
-  { id: 38, name: "Mothership", rarity: "Lendária", image: "https://iili.io/CteZJoB.webp" },
-  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: "https://iili.io/CtesNNp.webp" },
-  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: "https://iili.io/CteU6Zu.webp" },
-  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: "https://iili.io/CteDLPI.webp" },
-  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: "https://iili.io/CtebQzx.webp" },
-  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: "https://iili.io/CtemhBV.webp" },
-  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: "https://iili.io/Ctepd37.png" },
-  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: "https://iili.io/CtepoGV.webp" },
-  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: "https://iili.io/Ctep5ua.png" },
-  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: "https://iili.io/Ctepjtf.webp" },
-  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: "https://iili.io/CteydVR.png" },
-  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: "https://iili.io/CteynNs.png" },
-  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: "https://iili.io/Ctey6Jt.webp" }
+  { id: 1, name: "Party Ballons", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'party_ballons.png') },
+  { id: 2, name: "Lovesick", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'lovesick.png') },
+  { id: 3, name: "Gothic Bouquet", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'gothic_bouquet.png') },
+  { id: 4, name: "Devlish", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'devlish.png') },
+  { id: 5, name: "Spooky Brew", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'spooky_brew.png') },
+  { id: 6, name: "Pumpkin Slice", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'pumpkin_slice.png') },
+  { id: 7, name: "Cherry Bloosom", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'cherry_bloosom.png') },
+  { id: 8, name: "Sakura Parasol", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'sakura_parasol.png') },
+  { id: 9, name: "Devilborn", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'devilborn.png') },
+  { id: 10, name: "Dark Mansion", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'dark_mansion.png') },
+  { id: 11, name: "Phantom Light", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'phantom_light.png') },
+  { id: 12, name: "Dark Bones", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'dark_bones.png') },
+  { id: 13, name: "Classic", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'classic.png') },
+  { id: 14, name: "Ice Cream", rarity: "Rara", image: path.join(__dirname, 'assets', 'sets', 'ice_cream.png') },
+  { id: 15, name: "Pegasus Blade", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pegasus_blade.png') },
+  { id: 16, name: "Marine Anchor", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'marine_anchor.png') },
+  { id: 17, name: "Phosphoros", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'phosphoros.png') },
+  { id: 18, name: "Psycho Chainsaw", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'psycho_chainsaw.png') },
+  { id: 19, name: "Egg Basket", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'egg_basket.png') },
+  { id: 20, name: "Bloodthisrt Axe", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'bloodthisrt_axe.png') },
+  { id: 21, name: "Paranormal", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'paranormal.png') },
+  { id: 22, name: "Pot o'Gold", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pot_gold.png') },
+  { id: 23, name: "Acidic Potion", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'acidic_potion.png') },
+  { id: 24, name: "Dragon Puppet", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'dragon_puppet.png') },
+  { id: 25, name: "Spring World", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'spring_world.png') },
+  { id: 26, name: "Piñata", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'pinata.png') },
+  { id: 27, name: "Light Bone", rarity: "Épica", image: path.join(__dirname, 'assets', 'sets', 'light_bone.png') },
+  { id: 28, name: "Witch Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'witch_hunter.png') },
+  { id: 29, name: "Warlock Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'warlock_hunter.png') },
+  { id: 30, name: "Alchemist Hunter", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'alchemist_hunter.png') },
+  { id: 31, name: "Bubbly Gun", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'bubbly_gun.png') },
+  { id: 32, name: "Strawberry Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'strawberry_basket.png') },
+  { id: 33, name: "Lemon Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'lemon_basket.png') },
+  { id: 34, name: "Blueberry Basket", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'blueberry_basket.png') },
+  { id: 35, name: "Coffin", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'coffin.png') },
+  { id: 36, name: "Thombstone", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'thombstone.png') },
+  { id: 37, name: "Ancestral Trident", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'ancestral_trident.png') },
+  { id: 38, name: "Mothership", rarity: "Lendária", image: path.join(__dirname, 'assets', 'sets', 'mothership.png') },
+  { id: 39, name: "Mystical Trident", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'mystical_trident.png') },
+  { id: 40, name: "Ancient Trident", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'ancient_trident.png') },
+  { id: 41, name: "Choco Dip", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'choco_dip.png') },
+  { id: 42, name: "Psycho Axe", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'psycho_axe.png') },
+  { id: 43, name: "WaterGun", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'watergun.png') },
+  { id: 44, name: "Lemoned Jar", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'lemoned_jar.png') },
+  { id: 45, name: "Ube Rol", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'ube_rol.png') },
+  { id: 46, name: "Red Panda", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'red_panda.png') },
+  { id: 47, name: "Sour Candy", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'sour_candy.png') },
+  { id: 48, name: "Blue Star Warp", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'blue_star_warp.png') },
+  { id: 49, name: "Pink Star Wrap", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'pink_star_wrap.png') },
+  { id: 50, name: "Bleak Ink", rarity: "Lendária de Robux", image: path.join(__dirname, 'assets', 'sets', 'bleak_ink.png') }
 ];
 
 const commands = [
@@ -356,11 +356,21 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
   dbSets[guildId][user.id] = userSetData;
   saveData(SETS_FILE, dbSets);
 
+  // Se o arquivo local existir, envia como anexo para o embed
+  let filesArr = [];
+  let imageEmbedProp = null;
+  if (fs.existsSync(pendingSet.image)) {
+    const fileName = path.basename(pendingSet.image);
+    filesArr.push(new AttachmentBuilder(pendingSet.image, { name: fileName }));
+    imageEmbedProp = `attachment://${fileName}`;
+  }
+
   const embed = new EmbedBuilder()
     .setColor('#2196F3')
     .setTitle('🎉 Você ganhou um Set!')
-    .setDescription(`## ${pendingSet.name}\n\nClique no botão abaixo para resgatar seu set para o seu inventário!`)
-    .setImage(pendingSet.image);
+    .setDescription(`## ${pendingSet.name}\n\nClique no botão abaixo para resgatar seu set para o seu inventário!`);
+
+  if (imageEmbedProp) embed.setImage(imageEmbedProp);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -371,9 +381,9 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
   );
 
   if (messageOrInteraction.reply) {
-    return await messageOrInteraction.reply({ embeds: [embed], components: [row] });
+    return await messageOrInteraction.reply({ embeds: [embed], components: [row], files: filesArr });
   } else {
-    return await messageOrInteraction.channel.send({ embeds: [embed], components: [row] });
+    return await messageOrInteraction.channel.send({ embeds: [embed], components: [row], files: filesArr });
   }
 }
 
@@ -435,7 +445,7 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
   ctx.lineTo(960, 180);
   ctx.stroke();
 
-  // Grade de Miniaturas com Proteção contra Falhas de Imagens
+  // Grade de Miniaturas com Caminhos Locais Seguros
   const startX = 50;
   const startY = 200;
   const boxSize = 80;
@@ -458,12 +468,18 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     ctx.stroke();
 
     try {
-      const setImg = await loadImage(setItem.image);
-      ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
+      if (fs.existsSync(setItem.image)) {
+        const setImg = await loadImage(setItem.image);
+        ctx.drawImage(setImg, x + 5, y + 5, boxSize - 10, boxSize - 10);
+      } else {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '10px sans-serif';
+        ctx.fillText("Sem Ficheiro", x + 10, y + 45);
+      }
     } catch (e) {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '10px sans-serif';
-      ctx.fillText("Sem Img", x + 15, y + 45);
+      ctx.fillText("Erro Img", x + 15, y + 45);
     }
 
     const count = userInventory[setItem.id];
@@ -934,13 +950,22 @@ client.on('interactionCreate', async interaction => {
         new ButtonBuilder().setCustomId('claimed').setLabel('🎁 Set Resgatado').setStyle(ButtonStyle.Secondary).setDisabled(true)
       );
 
+      let filesArr = [];
+      let imageEmbedProp = null;
+      if (fs.existsSync(claimedSet.image)) {
+        const fileName = path.basename(claimedSet.image);
+        filesArr.push(new AttachmentBuilder(claimedSet.image, { name: fileName }));
+        imageEmbedProp = `attachment://${fileName}`;
+      }
+
       const embed = new EmbedBuilder()
         .setColor('#2196F3')
         .setTitle('Set Resgatado!')
-        .setDescription(`O set **${claimedSet.name}** foi adicionado ao seu inventário!\n\n**Use ?inventario ou /inventario para visualizar seu inv**`)
-        .setThumbnail(claimedSet.image);
+        .setDescription(`O set **${claimedSet.name}** foi adicionado ao seu inventário!\n\n**Use ?inventario ou /inventario para visualizar seu inv**`);
 
-      return await interaction.update({ embeds: [embed], components: [disabledRow] });
+      if (imageEmbedProp) embed.setThumbnail(imageEmbedProp);
+
+      return await interaction.update({ embeds: [embed], components: [disabledRow], files: filesArr });
     }
 
     // Navegar Categorias do Inventário
@@ -1030,7 +1055,7 @@ client.on('interactionCreate', async interaction => {
     let categoryName = 'geral';
     if (selectedValue === 'ticket_ftf') categoryName = 'flee-the-facility';
     if (selectedValue === 'ticket_mm2') categoryName = 'murder-mystery-2';
-    if (selectedValue === 'ticket_piggy') categoryName = 'piggy';
+    if (selectedValue === 'ticket_piggy') categoryName, categoryName = 'piggy';
     if (selectedValue === 'ticket_geral') categoryName = 'suporte-geral';
 
     const guild = interaction.guild;
@@ -1073,7 +1098,7 @@ client.on('interactionCreate', async interaction => {
       await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso: ${ticketChannel}` });
     } catch (error) {
       console.error(error);
-      await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket.' });
+      await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket. Verifique as permissões do bot.' });
     }
   }
 });
@@ -1089,4 +1114,4 @@ server.listen(PORT, () => {
   console.log(`🌐 Servidor HTTP ativo na porta ${PORT}`);
 });
 
-client.login(process.env.DISOURCE_TOKEN || process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN);
