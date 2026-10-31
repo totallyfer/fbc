@@ -130,6 +130,28 @@ const commands = [
         .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
         .addAttachmentOption(opt => opt.setName('miniatura').setDescription('Miniatura / Thumbnail da embed (anexo)').setRequired(false))
         .addAttachmentOption(opt => opt.setName('fundo').setDescription('Imagem de fundo do Canva (Banner de Boas-Vindas/Saída)').setRequired(false))
+    )
+    .addSubcommand(sub =>
+      sub.setName('comp')
+        .setDescription('Configura o painel dos comandos ?lf legit e ?lf esp.')
+        .addStringOption(opt => 
+          opt.setName('tipo')
+            .setDescription('Qual comando deseja configurar?')
+            .setRequired(true)
+            .addChoices(
+              { name: '?lf legit', value: 'legit' },
+              { name: '?lf esp', value: 'esp' }
+            )
+        )
+        .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed').setRequired(false))
+        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed').setRequired(false))
+        .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('miniatura').setDescription('Miniatura / Thumbnail da embed').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('fundo').setDescription('Imagem de fundo / Banner gerado pelo Canva').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo1').setDescription('1º Cargo a ser marcado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo2').setDescription('2º Cargo a ser marcado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo3').setDescription('3º Cargo a ser marcado').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo4').setDescription('4º Cargo a ser marcado').setRequired(false))
     ),
 
   new SlashCommandBuilder().setName('set').setDescription('Sorteie um set de Flee the Facility cadastrado!'),
@@ -188,6 +210,24 @@ function getGuildConfig(guildId) {
           thumbnail: '',
           fundo: ''
         }
+      },
+      lf: {
+        legit: {
+          title: '🎯 Procurando Jogadores (Legit)',
+          description: 'Membros marcados abaixo estão disponíveis para partidas legit!',
+          color: '#2196F3',
+          thumbnail: '',
+          fundo: '',
+          roles: [null, null, null, null]
+        },
+        esp: {
+          title: '⚡ Procurando Jogadores (ESP)',
+          description: 'Membros marcados abaixo estão disponíveis para partidas ESP!',
+          color: '#FF9800',
+          thumbnail: '',
+          fundo: '',
+          roles: [null, null, null, null]
+        }
       }
     };
     saveData(CONFIG_FILE, db);
@@ -200,9 +240,12 @@ function getGuildConfig(guildId) {
       entrada: { channelId: null, title: '👋 Novo Membro Chegou!', description: 'Seja bem-vindo(a) ao servidor, {user}!', color: '#57F287', thumbnail: '', fundo: '' },
       saida: { channelId: null, title: '🚪 Membro Saiu', description: '**{user}** saiu do servidor.', color: '#ED4245', thumbnail: '', fundo: '' }
     };
-  } else {
-    if (!db[guildId].portao.entrada.fundo) db[guildId].portao.entrada.fundo = '';
-    if (!db[guildId].portao.saida.fundo) db[guildId].portao.saida.fundo = '';
+  }
+  if (!db[guildId].lf) {
+    db[guildId].lf = {
+      legit: { title: '🎯 Procurando Jogadores (Legit)', description: 'Membros marcados abaixo:', color: '#2196F3', thumbnail: '', fundo: '', roles: [null, null, null, null] },
+      esp: { title: '⚡ Procurando Jogadores (ESP)', description: 'Membros marcados abaixo:', color: '#FF9800', thumbnail: '', fundo: '', roles: [null, null, null, null] }
+    };
   }
   return db[guildId];
 }
@@ -519,7 +562,7 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
 }
 
 // ==========================================
-// INVENTÁRIO COM FUNDO CUSTOMIZÁVEL
+// INVENTÁRIO
 // ==========================================
 async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
   const guildSets = getGuildCustomSets(guildId);
@@ -607,15 +650,20 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
     } catch (e) {}
 
     const count = userInventory[setItem.id] || 0;
-    ctx.fillStyle = '#2196F3';
+    
+    ctx.fillStyle = '#57F287';
     ctx.beginPath();
-    ctx.arc(x + boxWidth - 10, y + 10, 12, 0, Math.PI * 2);
+    ctx.arc(x + boxWidth - 12, y + 12, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${count}`, x + boxWidth - 10, y + 14);
+    ctx.fillText(`${count}x`, x + boxWidth - 12, y + 16);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '11px sans-serif';
@@ -662,9 +710,9 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
-// GERAÇÃO DE IMAGEM ESTILO CANVA (WELCOME/LEAVE)
+// GERAÇÃO DE BANNER CUSTOMIZADO (CANVA)
 // ==========================================
-async function generateCanvaBanner(member, customBgPath) {
+async function generateCustomBanner(customBgPath, defaultTitle) {
   const canvas = createCanvas(1000, 400);
   const ctx = canvas.getContext('2d');
 
@@ -675,12 +723,11 @@ async function generateCanvaBanner(member, customBgPath) {
       ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
       bgLoaded = true;
     } catch (e) {
-      console.error('Erro ao carregar fundo customizado do Canva:', e);
+      console.error('Erro ao carregar fundo:', e);
     }
   }
 
   if (!bgLoaded) {
-    // Fundo padrão moderno estilo Canva caso não tenha enviado imagem customizada
     const gradient = ctx.createLinearGradient(0, 0, 1000, 400);
     gradient.addColorStop(0, '#1a1c29');
     gradient.addColorStop(0.5, '#2b1055');
@@ -689,52 +736,63 @@ async function generateCanvaBanner(member, customBgPath) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  // Camada escura semi-transparente para dar destaque ao texto e avatar
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Avatar circular com borda estilizada
-  try {
-    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
-    const avatarImg = await loadImage(avatarURL);
-    
-    const centerX = 200;
-    const centerY = 200;
-    const radius = 90;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 42px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(defaultTitle.toUpperCase(), canvas.width / 2, 215);
+  ctx.textAlign = 'left';
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(avatarImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
-    ctx.restore();
+  return new AttachmentBuilder(await canvas.encode('png'), { name: 'banner-custom.png' });
+}
 
-    ctx.strokeStyle = '#57F287';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
-    ctx.stroke();
-  } catch (e) {
-    console.error('Erro ao carregar avatar:', e);
+// ==========================================
+// COMANDOS DE PREFIXO (?lf legit e ?lf esp)
+// ==========================================
+async function handleLfCommand(message, type) {
+  const guildId = message.guild.id;
+  const guildCfg = getGuildConfig(guildId);
+  const lfConfig = guildCfg.lf[type];
+
+  let rolesText = '';
+  if (lfConfig.roles && lfConfig.roles.length > 0) {
+    const validRoles = lfConfig.roles.filter(rId => rId !== null);
+    if (validRoles.length > 0) {
+      rolesText = validRoles.map(rId => `<@&${rId}>`).join(' ');
+    } else {
+      rolesText = '*(Nenhum cargo configurado)*';
+    }
+  } else {
+    rolesText = '*(Nenhum cargo configurado)*';
   }
 
-  // Textos estilizados
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 45px sans-serif';
-  ctx.fillText('BEM-VINDO(A)!', 350, 145);
+  const embed = new EmbedBuilder()
+    .setColor(lfConfig.color || '#5865F2')
+    .setTitle(lfConfig.title || `Procurando Jogadores (${type.toUpperCase()})`)
+    .setDescription(`${lfConfig.description || 'Membros marcados:'}\n\n${rolesText}`)
+    .setTimestamp();
 
-  ctx.fillStyle = '#57F287';
-  ctx.font = 'bold 32px sans-serif';
-  let username = member.user.username;
-  if (username.length > 18) username = username.substring(0, 16) + '...';
-  ctx.fillText(username, 350, 200);
+  let filesArray = [];
+  if (lfConfig.fundo && fs.existsSync(lfConfig.fundo)) {
+    try {
+      const banner = await generateCustomBanner(lfConfig.fundo, lfConfig.title);
+      filesArray.push(banner);
+      embed.setImage('attachment://banner-custom.png');
+    } catch (e) {}
+  }
 
-  ctx.fillStyle = '#d0d3dc';
-  ctx.font = '22px sans-serif';
-  ctx.fillText(`Servidor: ${member.guild.name}`, 350, 250);
+  if (lfConfig.thumbnail && fs.existsSync(lfConfig.thumbnail)) {
+    filesArray.push(new AttachmentBuilder(lfConfig.thumbnail, { name: 'lf-thumb.png' }));
+    embed.setThumbnail('attachment://lf-thumb.png');
+  }
 
-  return new AttachmentBuilder(await canvas.encode('png'), { name: 'banner-portao.png' });
+  try {
+    await message.channel.send({ content: rolesText, embeds: [embed], files: filesArray });
+  } catch (e) {
+    console.error('Erro ao enviar ?lf:', e);
+  }
 }
 
 // ==========================================
@@ -764,12 +822,10 @@ client.on('guildMemberAdd', async member => {
   let filesArray = [];
   
   try {
-    const bannerAttachment = await generateCanvaBanner(member, portao.fundo);
+    const bannerAttachment = await generateCustomBanner(portao.fundo, 'BEM-VINDO(A)!');
     filesArray.push(bannerAttachment);
-    embed.setImage('attachment://banner-portao.png');
-  } catch (err) {
-    console.error('Erro ao gerar imagem de entrada:', err);
-  }
+    embed.setImage('attachment://banner-custom.png');
+  } catch (err) {}
 
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
@@ -778,9 +834,7 @@ client.on('guildMemberAdd', async member => {
 
   try {
     await channel.send({ embeds: [embed], files: filesArray });
-  } catch (err) {
-    console.error('Erro ao enviar mensagem de boas-vindas:', err);
-  }
+  } catch (err) {}
 });
 
 client.on('guildMemberRemove', async member => {
@@ -793,7 +847,7 @@ client.on('guildMemberRemove', async member => {
   if (!channel) return;
 
   const rawTitle = portao.title || '🚪 Membro Saiu';
-  const rawDesc = portao.description || '**{user}** saiu do servidor. Esperamos que volte logo!';
+  const rawDesc = portao.description || '**{user}** saiu do servidor.';
 
   const formattedTitle = rawTitle.replace(/{user}/g, member.user.username);
   const formattedDesc = rawDesc.replace(/{user}/g, `${member.user.username}`);
@@ -807,12 +861,10 @@ client.on('guildMemberRemove', async member => {
   let filesArray = [];
 
   try {
-    const bannerAttachment = await generateCanvaBanner(member, portao.fundo);
+    const bannerAttachment = await generateCustomBanner(portao.fundo, 'SAÍDA');
     filesArray.push(bannerAttachment);
-    embed.setImage('attachment://banner-portao.png');
-  } catch (err) {
-    console.error('Erro ao gerar imagem de saída:', err);
-  }
+    embed.setImage('attachment://banner-custom.png');
+  } catch (err) {}
 
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
@@ -821,9 +873,7 @@ client.on('guildMemberRemove', async member => {
 
   try {
     await channel.send({ embeds: [embed], files: filesArray });
-  } catch (err) {
-    console.error('Erro ao enviar mensagem de saída:', err);
-  }
+  } catch (err) {}
 });
 
 // ==========================================
@@ -858,6 +908,15 @@ client.on('messageCreate', async message => {
   if (command === 'inventario') {
     const target = message.mentions.users.first() || message.author;
     await handleInventory(message, target, guildId, 'Todas', false);
+  }
+
+  if (command === 'lf' && args[0]) {
+    const subCmd = args[0].toLowerCase();
+    if (subCmd === 'legit') {
+      await handleLfCommand(message, 'legit');
+    } else if (subCmd === 'esp') {
+      await handleLfCommand(message, 'esp');
+    }
   }
 });
 
@@ -911,7 +970,6 @@ client.on('interactionCreate', async interaction => {
 
           return await interaction.reply({ embeds: [embed], ephemeral: true });
         } catch (e) {
-          console.error(e);
           return await interaction.reply({ content: '❌ Ocorreu um erro ao salvar a imagem do set.', ephemeral: true });
         }
       }
@@ -982,7 +1040,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (sub === 'portao') {
-        const tipo = interaction.options.getString('tipo'); // 'entrada' ou 'saida'
+        const tipo = interaction.options.getString('tipo');
         const canal = interaction.options.getChannel('canal');
         const tituloOpt = interaction.options.getString('titulo');
         const descOpt = interaction.options.getString('descricao');
@@ -1034,9 +1092,72 @@ client.on('interactionCreate', async interaction => {
             { name: '📝 Descrição', value: `\`${targetCfg.description}\``, inline: false }
           );
 
-        if (fundoArquivo) {
-          embedCfg.setImage(fundoArquivo.url);
+        return await interaction.reply({ embeds: [embedCfg], ephemeral: true });
+      }
+
+      if (sub === 'comp') {
+        const tipo = interaction.options.getString('tipo'); // 'legit' ou 'esp'
+        const tituloOpt = interaction.options.getString('titulo');
+        const descOpt = interaction.options.getString('descricao');
+        const corOpt = interaction.options.getString('cor');
+        const miniaturaArquivo = interaction.options.getAttachment('miniatura');
+        const fundoArquivo = interaction.options.getAttachment('fundo');
+
+        const c1 = interaction.options.getRole('cargo1');
+        const c2 = interaction.options.getRole('cargo2');
+        const c3 = interaction.options.getRole('cargo3');
+        const c4 = interaction.options.getRole('cargo4');
+
+        let targetCfg = guildCfg.lf[tipo];
+
+        if (tituloOpt) targetCfg.title = tituloOpt;
+        if (descOpt) targetCfg.description = descOpt;
+        if (corOpt) targetCfg.color = corOpt;
+
+        const rolesArr = [c1, c2, c3, c4];
+        for (let i = 0; i < 4; i++) {
+          if (rolesArr[i] !== null) {
+            targetCfg.roles[i] = rolesArr[i].id;
+          }
         }
+
+        const uploadsDir = path.join(__dirname, 'uploads_lf');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+        if (miniaturaArquivo) {
+          try {
+            const resThumb = await fetch(miniaturaArquivo.url);
+            const bufThumb = Buffer.from(await resThumb.arrayBuffer());
+            const thumbPath = path.join(uploadsDir, `${guildId}-lf-${tipo}-thumb.png`);
+            fs.writeFileSync(thumbPath, bufThumb);
+            targetCfg.thumbnail = thumbPath;
+          } catch (e) {}
+        }
+
+        if (fundoArquivo) {
+          try {
+            const resFundo = await fetch(fundoArquivo.url);
+            const bufFundo = Buffer.from(await resFundo.arrayBuffer());
+            const fundoPath = path.join(uploadsDir, `${guildId}-lf-${tipo}-fundo.png`);
+            fs.writeFileSync(fundoPath, bufFundo);
+            targetCfg.fundo = fundoPath;
+          } catch (e) {}
+        }
+
+        let dbConfig = loadData(CONFIG_FILE, {});
+        dbConfig[guildId] = guildCfg;
+        saveData(CONFIG_FILE, dbConfig);
+
+        const rolesDisplay = targetCfg.roles.filter(id => id !== null).map(id => `<@&${id}>`).join(', ') || 'Nenhum';
+
+        const embedCfg = new EmbedBuilder()
+          .setColor(targetCfg.color || '#5865F2')
+          .setTitle(`✅ Configuração de ?lf ${tipo} Atualizada!`)
+          .addFields(
+            { name: '📌 Título', value: `\`${targetCfg.title}\``, inline: false },
+            { name: '📝 Descrição', value: `\`${targetCfg.description}\``, inline: false },
+            { name: '👥 Cargos Marcados', value: rolesDisplay, inline: false }
+          );
 
         return await interaction.reply({ embeds: [embedCfg], ephemeral: true });
       }
