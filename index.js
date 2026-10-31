@@ -562,7 +562,7 @@ async function handleSetCommand(messageOrInteraction, user, guildId) {
 }
 
 // ==========================================
-// INVENTÁRIO
+// INVENTÁRIO (SEM NOMES NA DESCRIÇÃO)
 // ==========================================
 async function handleInventory(messageOrInteraction, targetUser, guildId, activeCategory = 'Todas', isUpdate = false) {
   const guildSets = getGuildCustomSets(guildId);
@@ -679,14 +679,12 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 
   const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'inventario.png' });
 
+  // Descrição limpa sem poluição de texto com nomes dos sets
   let descText = `📦 **Inventário de <@${targetUser.id}>**\n\n`;
   if (filteredSets.length === 0) {
     descText += `*Nenhum set encontrado na categoria **${activeCategory}**.*`;
   } else {
-    filteredSets.forEach(setItem => {
-      const qty = userInventory[setItem.id] || 0;
-      descText += `• **${setItem.name}** (${setItem.rarity}): ${qty}x\n`;
-    });
+    descText += `Exibindo ${filteredSets.length} item(ns) único(s) nesta categoria. Veja a imagem abaixo para detalhes dos sets.`;
   }
 
   const embed = new EmbedBuilder().setColor('#2196F3').setDescription(descText).setImage('attachment://inventario.png');
@@ -1096,7 +1094,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       if (sub === 'comp') {
-        const tipo = interaction.options.getString('tipo'); // 'legit' ou 'esp'
+        const tipo = interaction.options.getString('tipo');
         const tituloOpt = interaction.options.getString('titulo');
         const descOpt = interaction.options.getString('descricao');
         const corOpt = interaction.options.getString('cor');
