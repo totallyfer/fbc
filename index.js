@@ -111,13 +111,13 @@ const commands = [
     )
     .addSubcommand(sub =>
       sub.setName('cargos')
-        .setDescription('Configura e envia um painel de Auto-Cargo via menu de seleção.')
+        .setDescription('Cria e envia um painel de Auto-Cargo para um canal específico.')
+        .addChannelOption(opt => opt.setName('canal').setDescription('Canal onde o painel será enviado').setRequired(true))
         .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed').setRequired(true))
         .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed').setRequired(true))
         .addRoleOption(opt => opt.setName('cargo1').setDescription('1º Cargo do menu').setRequired(true))
-        .addChannelOption(opt => opt.setName('canal').setDescription('Canal onde o painel será enviado').setRequired(true))
         .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
-        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Imagem/Banner principal').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Imagem / Banner principal da embed').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo2').setDescription('2º Cargo do menu').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo3').setDescription('3º Cargo do menu').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo4').setDescription('4º Cargo do menu').setRequired(false))
@@ -944,9 +944,9 @@ client.on('interactionCreate', async interaction => {
       const sub = interaction.options.getSubcommand();
 
       if (sub === 'cargos') {
+        const canalEnvio = interaction.options.getChannel('canal');
         const titulo = interaction.options.getString('titulo');
         const descricao = interaction.options.getString('descricao');
-        const canalEnvio = interaction.options.getChannel('canal');
         const corHex = interaction.options.getString('cor') || '#5865F2';
         const imagemArquivo = interaction.options.getAttachment('imagem');
 
