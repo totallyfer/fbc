@@ -718,9 +718,9 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 }
 
 // ==========================================
-// GERAÇÃO DE BANNER CUSTOMIZADO (CANVA)
+// GERAÇÃO DE BANNER CUSTOMIZADO (CANVA) COM AVATAR E NOME
 // ==========================================
-async function generateCustomBanner(customBgPath, defaultTitle) {
+async function generateCustomBanner(customBgPath, member, guildName) {
   const canvas = createCanvas(1000, 400);
   const ctx = canvas.getContext('2d');
 
@@ -744,16 +744,50 @@ async function generateCustomBanner(customBgPath, defaultTitle) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
+  // Camada escura translúcida para destacar o texto e o avatar
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.50)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 42px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(defaultTitle.toUpperCase(), canvas.width / 2, 215);
-  ctx.textAlign = 'left';
+  // Desenhar o Avatar do Membro
+  try {
+    const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
+    const avatarImg = await loadImage(avatarURL);
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(200, 200, 80, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, 120, 120, 160, 160);
+    ctx.restore();
 
-  return new AttachmentBuilder(await canvas.encode('png'), { name: 'banner-custom.png' });
+    // Borda brilhante ao redor do avatar
+    ctx.strokeStyle = '#57F287';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(200, 200, 80, 0, Math.PI * 2, true);
+    ctx.stroke();
+  } catch (err) {
+    console.error('Erro ao carregar avatar no banner:', err);
+  }
+
+  // Texto de Boas-Vindas
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 46px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('BEM-VINDO(A)!', 320, 170);
+
+  // Nome do Usuário
+  ctx.fillStyle = '#57F287';
+  ctx.font = 'bold 36px sans-serif';
+  ctx.fillText(member.user.username, 320, 225);
+
+  // Nome do Servidor
+  ctx.fillStyle = '#b5bac1';
+  ctx.font = '24px sans-serif';
+  ctx.fillText(`ao servidor ${guildName}`, 320, 265);
+
+  return new AttachmentBuilder(await canvas.encode('png'), { name: 'banner-welcome.png' });
 }
 
 // ==========================================
@@ -785,9 +819,9 @@ async function handleLfCommand(message, type) {
   let filesArray = [];
   if (lfConfig.fundo && fs.existsSync(lfConfig.fundo)) {
     try {
-      const banner = await generateCustomBanner(lfConfig.fundo, lfConfig.title);
+      const banner = await generateCustomBanner(lfConfig.fundo, message.member, message.guild.name);
       filesArray.push(banner);
-      embed.setImage('attachment://banner-custom.png');
+      embed.setImage('attachment://banner-welcome.png');
     } catch (e) {}
   }
 
@@ -830,10 +864,12 @@ client.on('guildMemberAdd', async member => {
   let filesArray = [];
   
   try {
-    const bannerAttachment = await generateCustomBanner(portao.fundo, 'BEM-VINDO(A)!');
+    const bannerAttachment = await generateCustomBanner(portao.fundo, member, member.guild.name);
     filesArray.push(bannerAttachment);
-    embed.setImage('attachment://banner-custom.png');
-  } catch (err) {}
+    embed.setImage('attachment://banner-welcome.png');
+  } catch (err) {
+    console.error('Erro ao gerar imagem de boas-vindas:', err);
+  }
 
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
     filesArray.push(new AttachmentBuilder(portao.thumbnail, { name: 'portao-thumb.png' }));
@@ -842,7 +878,9 @@ client.on('guildMemberAdd', async member => {
 
   try {
     await channel.send({ embeds: [embed], files: filesArray });
-  } catch (err) {}
+  } catch (err) {
+    console.error('Erro ao enviar mensagem de boas-vindas:', err);
+  }
 });
 
 client.on('guildMemberRemove', async member => {
@@ -869,9 +907,9 @@ client.on('guildMemberRemove', async member => {
   let filesArray = [];
 
   try {
-    const bannerAttachment = await generateCustomBanner(portao.fundo, 'SAÍDA');
+    const bannerAttachment = await generateCustomBanner(portao.fundo, member, member.guild.name);
     filesArray.push(bannerAttachment);
-    embed.setImage('attachment://banner-custom.png');
+    embed.setImage('attachment://banner-welcome.png');
   } catch (err) {}
 
   if (portao.thumbnail && fs.existsSync(portao.thumbnail)) {
