@@ -11,9 +11,6 @@ const {
   SlashCommandBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
   AttachmentBuilder
 } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
@@ -111,6 +108,20 @@ const commands = [
         .addAttachmentOption(opt => opt.setName('miniatura_arquivo').setDescription('Miniatura / Thumbnail do painel (anexo)').setRequired(false))
         .addRoleOption(opt => opt.setName('cargo_staff').setDescription('Cargo de atendimento da staff').setRequired(false))
         .addChannelOption(opt => opt.setName('canal_envio').setDescription('Canal onde o painel será enviado').setRequired(false))
+    )
+    .addSubcommand(sub =>
+      sub.setName('cargos')
+        .setDescription('Configura e envia um painel de Auto-Cargo via menu de seleção.')
+        .addStringOption(opt => opt.setName('titulo').setDescription('Título da embed').setRequired(true))
+        .addStringOption(opt => opt.setName('descricao').setDescription('Descrição da embed').setRequired(true))
+        .addRoleOption(opt => opt.setName('cargo1').setDescription('1º Cargo do menu').setRequired(true))
+        .addChannelOption(opt => opt.setName('canal').setDescription('Canal onde o painel será enviado').setRequired(true))
+        .addStringOption(opt => opt.setName('cor').setDescription('Cor da embed em Hex (Ex: #57F287)').setRequired(false))
+        .addAttachmentOption(opt => opt.setName('imagem').setDescription('Imagem/Banner principal').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo2').setDescription('2º Cargo do menu').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo3').setDescription('3º Cargo do menu').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo4').setDescription('4º Cargo do menu').setRequired(false))
+        .addRoleOption(opt => opt.setName('cargo5').setDescription('5º Cargo do menu').setRequired(false))
     )
     .addSubcommand(sub =>
       sub.setName('portao')
@@ -388,7 +399,7 @@ async function handleLeaderboard(messageOrInteraction, guild) {
     }
 
     ctx.fillStyle = 'rgba(23, 24, 28, 0.90)';
-    ctx.fillRect(0, 0, canvas.width, 120);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 30px sans-serif';
@@ -679,7 +690,6 @@ async function handleInventory(messageOrInteraction, targetUser, guildId, active
 
   const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'inventario.png' });
 
-  // Descrição limpa sem poluição de texto com nomes dos sets
   let descText = `📦 **Inventário de <@${targetUser.id}>**\n\n`;
   if (filteredSets.length === 0) {
     descText += `*Nenhum set encontrado na categoria **${activeCategory}**.*`;
@@ -932,6 +942,69 @@ client.on('interactionCreate', async interaction => {
 
     if (commandName === 'config') {
       const sub = interaction.options.getSubcommand();
+
+      if (sub === 'cargos') {
+        const titulo = interaction.options.getString('titulo');
+        const descricao = interaction.options.getString('descricao');
+        const canalEnvio = interaction.options.getChannel('canal');
+        const corHex = interaction.options.getString('cor') || '#5865F2';
+        const imagemArquivo = interaction.options.getAttachment('imagem');
+
+        const rolesList = [
+          interaction.options.getRole('cargo1'),
+          interaction.options.getRole('cargo2'),
+          interaction.options.getRole('cargo3'),
+          interaction.options.getRole('cargo4'),
+          interaction.options.getRole('cargo5')
+        ].filter(r => r !== null);
+
+        if (rolesList.length === 0) {
+          return await interaction.reply({ content: '❌ Você precisa selecionar ao menos 1 cargo válido.', ephemeral: true });
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(titulo)
+          .setDescription(descricao)
+          .setColor(corHex)
+          .setTimestamp();
+
+        let filesArr = [];
+        if (imagemArquivo) {
+          try {
+            const resImg = await fetch(imagemArquivo.url);
+            const bufImg = Buffer.from(await resImg.arrayBuffer());
+            const uploadsDir = path.join(__dirname, 'uploads_cargos');
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+            const imgPath = path.join(uploadsDir, `${guildId}-cargo-${Date.now()}.png`);
+            fs.writeFileSync(imgPath, bufImg);
+
+            filesArr.push(new AttachmentBuilder(imgPath, { name: 'cargo-banner.png' }));
+            embed.setImage('attachment://cargo-banner.png');
+          } catch (e) {}
+        }
+
+        const selectOptions = rolesList.map(role => ({
+          label: role.name,
+          value: `role_toggle_${role.id}`,
+          description: `Clique para receber ou remover o cargo ${role.name}`,
+          emoji: '🏷️'
+        }));
+
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('auto_role_select')
+          .setPlaceholder('Selecione seus cargos aqui...')
+          .addOptions(selectOptions);
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+
+        try {
+          await canalEnvio.send({ embeds: [embed], components: [row], files: filesArr });
+          return await interaction.reply({ content: `✅ Painel de cargos enviado com sucesso para ${canalEnvio}!`, ephemeral: true });
+        } catch (e) {
+          console.error(e);
+          return await interaction.reply({ content: '❌ Ocorreu um erro ao enviar o painel no canal especificado.', ephemeral: true });
+        }
+      }
 
       if (sub === 'sets') {
         const nome = interaction.options.getString('nome');
@@ -1363,55 +1436,81 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
-    const selectedValue = interaction.values[0];
-    let categoryName = 'geral';
-    if (selectedValue === 'ticket_ftf') categoryName = 'flee-the-facility';
-    if (selectedValue === 'ticket_mm2') categoryName = 'murder-mystery-2';
-    if (selectedValue === 'ticket_piggy') categoryName = 'piggy';
-    if (selectedValue === 'ticket_geral') categoryName = 'suporte-geral';
+  // GERENCIAR MENUS DE SELEÇÃO
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === 'auto_role_select') {
+      const roleId = interaction.values[0].replace('role_toggle_', '');
+      const member = interaction.member;
 
-    const guild = interaction.guild;
-    const member = interaction.member;
-    const cfg = guildCfg.ticket;
+      try {
+        const role = await interaction.guild.roles.fetch(roleId);
+        if (!role) {
+          return await interaction.reply({ content: '❌ Cargo não encontrado no servidor.', ephemeral: true });
+        }
 
-    await interaction.deferReply({ ephemeral: true });
+        if (member.roles.cache.has(roleId)) {
+          await member.roles.remove(roleId);
+          return await interaction.reply({ content: `❌ O cargo **${role.name}** foi removido de você!`, ephemeral: true });
+        } else {
+          await member.roles.add(roleId);
+          return await interaction.reply({ content: `✅ O cargo **${role.name}** foi adicionado a você!`, ephemeral: true });
+        }
+      } catch (e) {
+        console.error(e);
+        return await interaction.reply({ content: '❌ Ocorreu um erro ao gerenciar seu cargo. Verifique as permissões do bot.', ephemeral: true });
+      }
+    }
 
-    try {
-      const ticketChannel = await guild.channels.create({
-        name: `ticket-${member.user.username}`,
-        type: ChannelType.GuildText,
-        permissionOverwrites: [
-          { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-          { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
-          ...(cfg.staffRoleId ? [{ id: cfg.staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : []),
-          { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }
-        ],
-      });
+    if (interaction.customId === 'ticket_select_menu') {
+      const selectedValue = interaction.values[0];
+      let categoryName = 'geral';
+      if (selectedValue === 'ticket_ftf') categoryName = 'flee-the-facility';
+      if (selectedValue === 'ticket_mm2') categoryName = 'murder-mystery-2';
+      if (selectedValue === 'ticket_piggy') categoryName = 'piggy';
+      if (selectedValue === 'ticket_geral') categoryName = 'suporte-geral';
 
-      const ticketEmbed = new EmbedBuilder()
-        .setColor('#00FFCC')
-        .setTitle(`Ticket de ${member.user.username}`)
-        .setDescription(`Categoria: **${categoryName.toUpperCase()}**\n\nDescreva sua dúvida ou problema detalhadamente.`)
-        .setTimestamp();
+      const guild = interaction.guild;
+      const member = interaction.member;
+      const cfg = guildCfg.ticket;
 
-      const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('claim_ticket').setLabel('Assumir Ticket').setStyle(ButtonStyle.Primary).setEmoji('🙋‍♂️'),
-        new ButtonBuilder().setCustomId('close_ticket').setLabel('Fechar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
-      );
+      await interaction.deferReply({ ephemeral: true });
 
-      const staffMention = cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '*(Cargo não configurado)*';
+      try {
+        const ticketChannel = await guild.channels.create({
+          name: `ticket-${member.user.username}`,
+          type: ChannelType.GuildText,
+          permissionOverwrites: [
+            { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+            { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
+            ...(cfg.staffRoleId ? [{ id: cfg.staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : []),
+            { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }
+          ],
+        });
 
-      await ticketChannel.send({ 
-        content: `${member} | ${staffMention}`, 
-        embeds: [ticketEmbed], 
-        components: [actionRow] 
-      });
+        const ticketEmbed = new EmbedBuilder()
+          .setColor('#00FFCC')
+          .setTitle(`Ticket de ${member.user.username}`)
+          .setDescription(`Categoria: **${categoryName.toUpperCase()}**\n\nDescreva sua dúvida ou problema detalhadamente.`)
+          .setTimestamp();
 
-      await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso: ${ticketChannel}` });
-    } catch (error) {
-      console.error(error);
-      await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket.' });
+        const actionRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('claim_ticket').setLabel('Assumir Ticket').setStyle(ButtonStyle.Primary).setEmoji('🙋‍♂️'),
+          new ButtonBuilder().setCustomId('close_ticket').setLabel('Fechar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+        );
+
+        const staffMention = cfg.staffRoleId ? `<@&${cfg.staffRoleId}>` : '*(Cargo não configurado)*';
+
+        await ticketChannel.send({ 
+          content: `${member} | ${staffMention}`, 
+          embeds: [ticketEmbed], 
+          components: [actionRow] 
+        });
+
+        await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso: ${ticketChannel}` });
+      } catch (error) {
+        console.error(error);
+        await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket.' });
+      }
     }
   }
 });
